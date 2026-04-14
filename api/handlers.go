@@ -3,6 +3,7 @@ package api
 import (
 	"math"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -11,6 +12,43 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// ─── LOGIN ──────────────────────────────────────────────────────────────────
+
+type LoginRequest struct {
+	Password string `json:"password" binding:"required"`
+}
+
+func Login(c *gin.Context) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password harus diisi"})
+		return
+	}
+
+	// Ambil password dari environment variable
+	correctPassword := os.Getenv("ADMIN_PASSWORD")
+	if correctPassword == "" {
+		correctPassword = "admin123" // Default password untuk development
+	}
+
+	if req.Password != correctPassword {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Password salah"})
+		return
+	}
+
+	// Generate JWT token
+	token, err := GenerateToken("admin")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login berhasil",
+		"token":   token,
+	})
+}
 
 // ─── TARGETS ────────────────────────────────────────────────────────────────
 

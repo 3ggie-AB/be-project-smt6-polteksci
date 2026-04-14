@@ -18,22 +18,30 @@ func SetupRouter() *gin.Engine {
 
 	v1 := r.Group("/api")
 	{
-		// Targets (daftar IP yang di-ping)
-		v1.GET("/targets", GetTargets)
-		v1.POST("/targets", CreateTarget)
-		v1.DELETE("/targets/:id", DeleteTarget)
-
-		// Ping results
-		v1.GET("/pings/latest", GetLatestPings)
-		v1.GET("/pings/history", GetPingHistory)
-		v1.GET("/pings/summary", GetPingSummary)
-
-		// Angket kepuasan
+		// Login endpoint (tidak perlu auth)
+		v1.POST("/login", Login)
 		v1.POST("/surveys", SubmitSurvey)
-		v1.GET("/surveys", GetSurveys)
 
-		// Korelasi
-		v1.GET("/correlation", GetCorrelation)
+		// Endpoint yang perlu autentikasi
+		protected := v1.Group("")
+		protected.Use(AuthRequired())
+		{
+			// Targets (daftar IP yang di-ping)
+			protected.GET("/targets", GetTargets)
+			protected.POST("/targets", CreateTarget)
+			protected.DELETE("/targets/:id", DeleteTarget)
+
+			// Ping results
+			protected.GET("/pings/latest", GetLatestPings)
+			protected.GET("/pings/history", GetPingHistory)
+			protected.GET("/pings/summary", GetPingSummary)
+
+			// Angket kepuasan
+			protected.GET("/surveys", GetSurveys)
+
+			// Korelasi
+			protected.GET("/correlation", GetCorrelation)
+		}
 	}
 
 	return r
