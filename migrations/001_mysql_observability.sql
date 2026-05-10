@@ -49,9 +49,6 @@ CREATE TABLE IF NOT EXISTS devices (
   model VARCHAR(120) NULL,
   location VARCHAR(180) NULL,
   device_type VARCHAR(50) NOT NULL DEFAULT 'network',
-  tcp_port INT NOT NULL DEFAULT 443,
-  ping_interval_sec INT NOT NULL DEFAULT 5,
-  tcp_interval_sec INT NOT NULL DEFAULT 30,
   snmp_community VARCHAR(120) NULL,
   snmp_version VARCHAR(10) NULL DEFAULT 'v2c',
   ruijie_external_id VARCHAR(160) NULL,
@@ -92,6 +89,30 @@ CREATE TABLE IF NOT EXISTS device_group_members (
   KEY idx_device_group_members_device_id (device_id),
   CONSTRAINT fk_dgm_group FOREIGN KEY (device_group_id) REFERENCES device_groups(id) ON DELETE CASCADE,
   CONSTRAINT fk_dgm_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS monitoring_targets (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  workspace_id BIGINT UNSIGNED NOT NULL,
+  name VARCHAR(160) NOT NULL,
+  host VARCHAR(255) NOT NULL,
+  check_type VARCHAR(16) NOT NULL,
+  port INT NOT NULL DEFAULT 0,
+  interval_sec INT NOT NULL DEFAULT 0,
+  timeout_sec INT NOT NULL DEFAULT 0,
+  description VARCHAR(500) NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  last_checked_at DATETIME(3) NULL,
+  last_status BOOLEAN NULL,
+  created_at DATETIME(3) NULL,
+  updated_at DATETIME(3) NULL,
+  PRIMARY KEY (id),
+  KEY idx_monitoring_targets_workspace_host (workspace_id, host),
+  KEY idx_monitoring_targets_name (name),
+  KEY idx_monitoring_targets_check_active (check_type, is_active),
+  KEY idx_monitoring_targets_last_checked_at (last_checked_at),
+  KEY idx_monitoring_targets_last_status (last_status),
+  CONSTRAINT fk_monitoring_targets_workspace FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS notifications (

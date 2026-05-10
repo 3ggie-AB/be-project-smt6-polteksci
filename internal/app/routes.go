@@ -25,6 +25,7 @@ type RouterDeps struct {
 	Logger        *slog.Logger
 	Auth          *authpkg.Service
 	Devices       *service.DeviceService
+	Targets       *service.TargetService
 	Users         repository.UserRepository
 	Notifications repository.NotificationRepository
 	Realtime      *websocket.Broker
@@ -58,6 +59,7 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 				"login":   "/api/auth/login",
 				"stream":  "/api/stream",
 				"devices": "/api/devices",
+				"targets": "/api/targets",
 			},
 		})
 	})
@@ -97,9 +99,13 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 	protected.GET("/devices", listDevices(deps))
 	protected.POST("/devices", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), createDevice(deps))
 	protected.DELETE("/devices/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), deleteDevice(deps))
+	protected.GET("/targets", listTargets(deps))
+	protected.POST("/targets", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), createTarget(deps))
+	protected.DELETE("/targets/:id", middleware.RequireRoles(domain.RoleSuperAdmin, domain.RoleAdmin), deleteTarget(deps))
 	protected.GET("/notifications", listNotifications(deps))
 	protected.POST("/notifications/:id/read", markNotificationRead(deps))
 	protected.GET("/ml/features/:device_id", getFeatureVector(deps))
+	protected.GET("/ml/features/targets/:target_id", getTargetFeatureVector(deps))
 
 	return r
 }
@@ -176,6 +182,47 @@ func deleteDevice(deps RouterDeps) gin.HandlerFunc {
 	}
 }
 
+func listTargets(deps RouterDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		targets, err := deps.Targets.List(c.Request.Context(), middleware.WorkspaceID(c))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list monitoring targets"})
+			return
+		}
+		c.JSON(http.StatusOK, targets)
+	}
+}
+
+func createTarget(deps RouterDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var target domain.MonitoringTarget
+		if err := c.ShouldBindJSON(&target); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := deps.Targets.Create(c.Request.Context(), middleware.WorkspaceID(c), &target); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, target)
+	}
+}
+
+func deleteTarget(deps RouterDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := parseUintParam(c, "id")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := deps.Targets.Delete(c.Request.Context(), id); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete monitoring target"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "target deleted"})
+	}
+}
+
 func listNotifications(deps RouterDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		workspaceID := middleware.WorkspaceID(c)
@@ -215,6 +262,25 @@ func getFeatureVector(deps RouterDeps) gin.HandlerFunc {
 			return
 		}
 		vector, ok := deps.Features.VectorFor(id)
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "feature vector not found"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"features":   vector,
+			"onnx_input": vector.ONNXInput(),
+		})
+	}
+}
+
+func getTargetFeatureVector(deps RouterDeps) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := parseUintParam(c, "target_id")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		vector, ok := deps.Features.VectorForTarget(id)
 		if !ok {
 			c.JSON(http.StatusNotFound, gin.H{"error": "feature vector not found"})
 			return

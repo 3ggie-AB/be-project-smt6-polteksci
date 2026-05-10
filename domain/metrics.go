@@ -4,6 +4,7 @@ import "time"
 
 type PingMetric struct {
 	DeviceID     uint      `json:"device_id"`
+	TargetID     uint      `json:"target_id"`
 	Workspace    string    `json:"workspace"`
 	IP           string    `json:"ip"`
 	LatencyMS    float64   `json:"latency_ms"`
@@ -15,6 +16,7 @@ type PingMetric struct {
 
 type TCPMetric struct {
 	DeviceID          uint      `json:"device_id"`
+	TargetID          uint      `json:"target_id"`
 	Workspace         string    `json:"workspace"`
 	IP                string    `json:"ip"`
 	Port              int       `json:"port"`
@@ -43,6 +45,7 @@ type APMetric struct {
 
 type AnomalyMetric struct {
 	DeviceID            uint      `json:"device_id"`
+	TargetID            uint      `json:"target_id"`
 	Workspace           string    `json:"workspace"`
 	IP                  string    `json:"ip"`
 	Score               float64   `json:"score"`
@@ -71,6 +74,7 @@ type RealtimeEvent struct {
 	Severity   string         `json:"severity"`
 	Workspace  string         `json:"workspace"`
 	DeviceID   uint           `json:"device_id,omitempty"`
+	TargetID   uint           `json:"target_id,omitempty"`
 	IP         string         `json:"ip,omitempty"`
 	Title      string         `json:"title"`
 	Message    string         `json:"message"`
@@ -80,6 +84,7 @@ type RealtimeEvent struct {
 
 type FeatureVector struct {
 	DeviceID            uint      `json:"device_id"`
+	TargetID            uint      `json:"target_id"`
 	Workspace           string    `json:"workspace"`
 	LatencyRollingAvgMS float64   `json:"latency_rolling_avg_ms"`
 	PacketLossRatio     float64   `json:"packet_loss_ratio"`

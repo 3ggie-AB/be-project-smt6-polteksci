@@ -25,6 +25,7 @@ MySQL is authoritative for metadata:
 
 - `users`, `roles`, `workspaces`
 - `devices`, `device_groups`, `device_group_members`
+- `monitoring_targets`
 - `notifications`
 
 InfluxDB is authoritative for time-series:
@@ -38,6 +39,7 @@ InfluxDB is authoritative for time-series:
 Influx tags:
 
 - `device_id`
+- `target_id`
 - `workspace`
 - `ip`
 - `ap_name` when available
@@ -67,8 +69,10 @@ JWT claims include `user_id`, `email`, `role`, and `workspace_id`; RBAC middlewa
 
 Active monitoring:
 
-- Ping every `PING_INTERVAL`, default `5s`
-- TCP check every `TCP_INTERVAL`, default `30s`
+- Ping reads rows from `monitoring_targets` where `check_type=ping`
+- TCP check reads rows from `monitoring_targets` where `check_type=tcp`
+- Ping scheduler interval defaults to `PING_INTERVAL=5s`
+- TCP scheduler interval defaults to `TCP_INTERVAL=30s`
 - Worker pools are bounded by `PING_WORKERS` and `TCP_WORKERS`
 - Metrics are written to InfluxDB asynchronously
 - Realtime events are published to SSE
@@ -115,4 +119,5 @@ Endpoint:
 
 ```text
 GET /api/ml/features/:device_id
+GET /api/ml/features/targets/:target_id
 ```

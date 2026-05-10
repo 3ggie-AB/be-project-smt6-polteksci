@@ -176,7 +176,7 @@ func (w *Writer) enqueue(point *write.Point) {
 func (w *Writer) WritePing(ctx context.Context, metric domain.PingMetric) {
 	point := influxdb2.NewPoint(
 		"ping_metrics",
-		baseTags(metric.DeviceID, metric.Workspace, metric.IP, ""),
+		baseTags(metric.DeviceID, metric.TargetID, metric.Workspace, metric.IP, ""),
 		map[string]any{
 			"latency":       metric.LatencyMS,
 			"packet_loss":   metric.PacketLoss,
@@ -191,7 +191,7 @@ func (w *Writer) WritePing(ctx context.Context, metric domain.PingMetric) {
 func (w *Writer) WriteTCP(ctx context.Context, metric domain.TCPMetric) {
 	point := influxdb2.NewPoint(
 		"tcp_metrics",
-		withTag(baseTags(metric.DeviceID, metric.Workspace, metric.IP, ""), "port", strconv.Itoa(metric.Port)),
+		withTag(baseTags(metric.DeviceID, metric.TargetID, metric.Workspace, metric.IP, ""), "port", strconv.Itoa(metric.Port)),
 		map[string]any{
 			"connect_duration": metric.ConnectDurationMS,
 			"success":          metric.Success,
@@ -218,7 +218,7 @@ func (w *Writer) WriteAP(ctx context.Context, metric domain.APMetric) {
 
 	point := influxdb2.NewPoint(
 		"ap_metrics",
-		withTag(baseTags(metric.DeviceID, metric.Workspace, metric.IP, metric.APName), "source", metric.Source),
+		withTag(baseTags(metric.DeviceID, 0, metric.Workspace, metric.IP, metric.APName), "source", metric.Source),
 		fields,
 		metric.Timestamp,
 	)
@@ -228,7 +228,7 @@ func (w *Writer) WriteAP(ctx context.Context, metric domain.APMetric) {
 func (w *Writer) WriteAnomaly(ctx context.Context, metric domain.AnomalyMetric) {
 	point := influxdb2.NewPoint(
 		"anomaly_metrics",
-		baseTags(metric.DeviceID, metric.Workspace, metric.IP, ""),
+		baseTags(metric.DeviceID, metric.TargetID, metric.Workspace, metric.IP, ""),
 		map[string]any{
 			"score":                 metric.Score,
 			"latency_rolling_avg":   metric.LatencyRollingAvgMS,
@@ -246,7 +246,7 @@ func (w *Writer) WriteAnomaly(ctx context.Context, metric domain.AnomalyMetric) 
 func (w *Writer) WriteSyslog(ctx context.Context, event domain.SyslogEvent) {
 	point := influxdb2.NewPoint(
 		"syslog_events",
-		withTags(baseTags(event.DeviceID, event.Workspace, event.IP, ""), map[string]string{
+		withTags(baseTags(event.DeviceID, 0, event.Workspace, event.IP, ""), map[string]string{
 			"facility": event.Facility,
 			"severity": event.Severity,
 			"hostname": event.Hostname,
@@ -259,11 +259,16 @@ func (w *Writer) WriteSyslog(ctx context.Context, event domain.SyslogEvent) {
 	w.enqueue(point)
 }
 
-func baseTags(deviceID uint, workspace, ip, apName string) map[string]string {
+func baseTags(deviceID, targetID uint, workspace, ip, apName string) map[string]string {
 	tags := map[string]string{
-		"device_id": strconv.FormatUint(uint64(deviceID), 10),
 		"workspace": workspace,
 		"ip":        ip,
+	}
+	if deviceID > 0 {
+		tags["device_id"] = strconv.FormatUint(uint64(deviceID), 10)
+	}
+	if targetID > 0 {
+		tags["target_id"] = strconv.FormatUint(uint64(targetID), 10)
 	}
 	if apName != "" {
 		tags["ap_name"] = apName

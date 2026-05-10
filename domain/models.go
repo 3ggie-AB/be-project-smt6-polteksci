@@ -64,9 +64,6 @@ type Device struct {
 	Model            string        `json:"model" gorm:"size:120"`
 	Location         string        `json:"location" gorm:"size:180;index"`
 	DeviceType       string        `json:"device_type" gorm:"size:50;not null;default:network;index"`
-	TCPPort          int           `json:"tcp_port" gorm:"not null;default:443"`
-	PingIntervalSec  int           `json:"ping_interval_sec" gorm:"not null;default:5"`
-	TCPIntervalSec   int           `json:"tcp_interval_sec" gorm:"not null;default:30"`
 	SNMPCommunity    string        `json:"-" gorm:"size:120"`
 	SNMPVersion      string        `json:"snmp_version" gorm:"size:10;default:v2c"`
 	RuijieExternalID string        `json:"ruijie_external_id" gorm:"size:160;index"`
@@ -74,6 +71,31 @@ type Device struct {
 	LastSeenAt       *time.Time    `json:"last_seen_at" gorm:"index"`
 	CreatedAt        time.Time     `json:"created_at"`
 	UpdatedAt        time.Time     `json:"updated_at"`
+}
+
+type CheckType string
+
+const (
+	CheckTypePing CheckType = "ping"
+	CheckTypeTCP  CheckType = "tcp"
+)
+
+type MonitoringTarget struct {
+	ID            uint       `json:"id" gorm:"primaryKey;autoIncrement"`
+	WorkspaceID   uint       `json:"workspace_id" gorm:"not null;index:idx_target_workspace_host,priority:1"`
+	Workspace     Workspace  `json:"workspace" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Name          string     `json:"name" gorm:"size:160;not null;index"`
+	Host          string     `json:"host" gorm:"size:255;not null;index:idx_target_workspace_host,priority:2"`
+	CheckType     CheckType  `json:"check_type" gorm:"size:16;not null;index:idx_target_check_active,priority:1"`
+	Port          int        `json:"port" gorm:"not null;default:0"`
+	IntervalSec   int        `json:"interval_sec" gorm:"not null;default:0"`
+	TimeoutSec    int        `json:"timeout_sec" gorm:"not null;default:0"`
+	Description   string     `json:"description" gorm:"size:500"`
+	IsActive      bool       `json:"is_active" gorm:"not null;default:true;index:idx_target_check_active,priority:2"`
+	LastCheckedAt *time.Time `json:"last_checked_at" gorm:"index"`
+	LastStatus    *bool      `json:"last_status" gorm:"index"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
 type Notification struct {
@@ -104,25 +126,4 @@ type Survey struct {
 	Q5Satisfaction int       `json:"q5_satisfaction"`
 	Comment        string    `json:"comment" gorm:"size:1000"`
 	CreatedAt      time.Time `json:"created_at" gorm:"index"`
-}
-
-func (d Device) EffectiveTCPPort(defaultPort int) int {
-	if d.TCPPort > 0 {
-		return d.TCPPort
-	}
-	return defaultPort
-}
-
-func (d Device) EffectivePingInterval(defaultInterval time.Duration) time.Duration {
-	if d.PingIntervalSec > 0 {
-		return time.Duration(d.PingIntervalSec) * time.Second
-	}
-	return defaultInterval
-}
-
-func (d Device) EffectiveTCPInterval(defaultInterval time.Duration) time.Duration {
-	if d.TCPIntervalSec > 0 {
-		return time.Duration(d.TCPIntervalSec) * time.Second
-	}
-	return defaultInterval
 }

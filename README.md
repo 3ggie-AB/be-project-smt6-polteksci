@@ -21,8 +21,11 @@ curl http://localhost:8080/healthz
 - `POST /api/auth/login`
 - `GET /api/devices`
 - `POST /api/devices`
+- `GET /api/targets`
+- `POST /api/targets`
 - `GET /api/stream?access_token=<jwt>`
 - `GET /api/ml/features/:device_id`
+- `GET /api/ml/features/targets/:target_id`
 
 ## Architecture
 

@@ -29,7 +29,7 @@ func New(ctx context.Context, cfg config.MySQLConfig, log *slog.Logger) (*Store,
 	}
 
 	db, err := gorm.Open(mysql.Open(cfg.DSN()), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Warn),
+		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("connect mysql: %w", err)
@@ -60,7 +60,7 @@ func ensureDatabase(ctx context.Context, cfg config.MySQLConfig) error {
 	}
 
 	serverDB, err := gorm.Open(mysql.Open(cfg.ServerDSN()), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Warn),
+		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		return fmt.Errorf("connect mysql server: %w", err)
@@ -113,6 +113,7 @@ func (s *Store) Migrate(ctx context.Context) error {
 		&domain.User{},
 		&domain.DeviceGroup{},
 		&domain.Device{},
+		&domain.MonitoringTarget{},
 		&domain.Notification{},
 		&domain.Survey{},
 	); err != nil {
@@ -237,15 +238,6 @@ func (s *Store) CreateDevice(ctx context.Context, device *domain.Device) error {
 		}
 		device.WorkspaceID = workspace.ID
 	}
-	if device.TCPPort == 0 {
-		device.TCPPort = 443
-	}
-	if device.PingIntervalSec == 0 {
-		device.PingIntervalSec = 5
-	}
-	if device.TCPIntervalSec == 0 {
-		device.TCPIntervalSec = 30
-	}
 	return s.db.WithContext(ctx).Create(device).Error
 }
 
@@ -256,6 +248,57 @@ func (s *Store) DeleteDevice(ctx context.Context, id uint) error {
 func (s *Store) MarkDeviceSeen(ctx context.Context, id uint) error {
 	now := time.Now()
 	return s.db.WithContext(ctx).Model(&domain.Device{}).Where("id = ?", id).Update("last_seen_at", &now).Error
+}
+
+func (s *Store) ListTargets(ctx context.Context, workspaceID *uint) ([]domain.MonitoringTarget, error) {
+	var targets []domain.MonitoringTarget
+	query := s.db.WithContext(ctx).Preload("Workspace").Order("name ASC")
+	if workspaceID != nil {
+		query = query.Where("workspace_id = ?", *workspaceID)
+	}
+	return targets, query.Find(&targets).Error
+}
+
+func (s *Store) ListActiveTargetsByCheckType(ctx context.Context, checkType domain.CheckType) ([]domain.MonitoringTarget, error) {
+	var targets []domain.MonitoringTarget
+	err := s.db.WithContext(ctx).
+		Preload("Workspace").
+		Where("is_active = ? AND check_type = ?", true, checkType).
+		Find(&targets).Error
+	return targets, err
+}
+
+func (s *Store) FindTargetByID(ctx context.Context, id uint) (*domain.MonitoringTarget, error) {
+	var target domain.MonitoringTarget
+	if err := s.db.WithContext(ctx).Preload("Workspace").First(&target, id).Error; err != nil {
+		return nil, err
+	}
+	return &target, nil
+}
+
+func (s *Store) CreateTarget(ctx context.Context, target *domain.MonitoringTarget) error {
+	if target.WorkspaceID == 0 {
+		var workspace domain.Workspace
+		if err := s.db.WithContext(ctx).Where("slug = ?", "default").First(&workspace).Error; err != nil {
+			return err
+		}
+		target.WorkspaceID = workspace.ID
+	}
+	return s.db.WithContext(ctx).Create(target).Error
+}
+
+func (s *Store) DeleteTarget(ctx context.Context, id uint) error {
+	return s.db.WithContext(ctx).Delete(&domain.MonitoringTarget{}, id).Error
+}
+
+func (s *Store) MarkTargetChecked(ctx context.Context, id uint, status bool) error {
+	now := time.Now()
+	return s.db.WithContext(ctx).Model(&domain.MonitoringTarget{}).
+		Where("id = ?", id).
+		Updates(map[string]any{
+			"last_checked_at": &now,
+			"last_status":     &status,
+		}).Error
 }
 
 func (s *Store) CreateNotification(ctx context.Context, notification *domain.Notification) error {
@@ -304,6 +347,34 @@ func (a DeviceRepositoryAdapter) MarkSeen(ctx context.Context, id uint) error {
 	return a.Store.MarkDeviceSeen(ctx, id)
 }
 
+type MonitoringTargetRepositoryAdapter struct {
+	*Store
+}
+
+func (a MonitoringTargetRepositoryAdapter) List(ctx context.Context, workspaceID *uint) ([]domain.MonitoringTarget, error) {
+	return a.Store.ListTargets(ctx, workspaceID)
+}
+
+func (a MonitoringTargetRepositoryAdapter) ListActiveByCheckType(ctx context.Context, checkType domain.CheckType) ([]domain.MonitoringTarget, error) {
+	return a.Store.ListActiveTargetsByCheckType(ctx, checkType)
+}
+
+func (a MonitoringTargetRepositoryAdapter) FindByID(ctx context.Context, id uint) (*domain.MonitoringTarget, error) {
+	return a.Store.FindTargetByID(ctx, id)
+}
+
+func (a MonitoringTargetRepositoryAdapter) Create(ctx context.Context, target *domain.MonitoringTarget) error {
+	return a.Store.CreateTarget(ctx, target)
+}
+
+func (a MonitoringTargetRepositoryAdapter) Delete(ctx context.Context, id uint) error {
+	return a.Store.DeleteTarget(ctx, id)
+}
+
+func (a MonitoringTargetRepositoryAdapter) MarkChecked(ctx context.Context, id uint, status bool) error {
+	return a.Store.MarkTargetChecked(ctx, id, status)
+}
+
 type NotificationRepositoryAdapter struct {
 	*Store
 }
@@ -322,4 +393,5 @@ func (a NotificationRepositoryAdapter) MarkRead(ctx context.Context, id uint) er
 
 var _ repository.UserRepository = (*Store)(nil)
 var _ repository.DeviceRepository = DeviceRepositoryAdapter{}
+var _ repository.MonitoringTargetRepository = MonitoringTargetRepositoryAdapter{}
 var _ repository.NotificationRepository = NotificationRepositoryAdapter{}

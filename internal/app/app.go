@@ -39,6 +39,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}()
 
 	deviceRepo := mysqlstore.DeviceRepositoryAdapter{Store: store}
+	targetRepo := mysqlstore.MonitoringTargetRepositoryAdapter{Store: store}
 	notificationRepo := mysqlstore.NotificationRepositoryAdapter{Store: store}
 	metricWriter := influx.NewWriter(cfg.Influx, logger)
 	checkCtx, cancelCheck := context.WithTimeout(ctx, 3*time.Second)
@@ -68,6 +69,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	featureEngine := ml.NewFeatureEngine(120)
 	authSvc := authpkg.NewService(cfg.Auth, store)
 	deviceSvc := service.NewDeviceService(deviceRepo)
+	targetSvc := service.NewTargetService(targetRepo)
 
 	runCtx, cancelCollectors := context.WithCancel(ctx)
 	defer cancelCollectors()
@@ -81,7 +83,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		}()
 	}
 
-	active := collector.NewActiveEngine(deviceRepo, metricWriter, broker, featureEngine, cfg.Monitoring, logger)
+	active := collector.NewActiveEngine(targetRepo, metricWriter, broker, featureEngine, cfg.Monitoring, logger)
 	ruijie := collector.NewRuijieCollector(cfg.Ruijie, metricWriter, broker, featureEngine, logger)
 	syslog := collector.NewSyslogReceiver(cfg.Syslog, metricWriter, broker, logger)
 	snmp := collector.NewSNMPCollector(cfg.SNMP, deviceRepo, metricWriter, featureEngine, logger)
@@ -117,6 +119,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Logger:        logger,
 		Auth:          authSvc,
 		Devices:       deviceSvc,
+		Targets:       targetSvc,
 		Users:         store,
 		Notifications: notificationRepo,
 		Realtime:      broker,

@@ -36,7 +36,7 @@ type FeatureRecorder interface {
 }
 
 type ActiveEngine struct {
-	devices  repository.DeviceRepository
+	targets  repository.MonitoringTargetRepository
 	sink     MetricSink
 	events   EventPublisher
 	features FeatureRecorder
@@ -45,7 +45,7 @@ type ActiveEngine struct {
 }
 
 func NewActiveEngine(
-	devices repository.DeviceRepository,
+	targets repository.MonitoringTargetRepository,
 	sink MetricSink,
 	events EventPublisher,
 	features FeatureRecorder,
@@ -53,7 +53,7 @@ func NewActiveEngine(
 	logger *slog.Logger,
 ) *ActiveEngine {
 	return &ActiveEngine{
-		devices:  devices,
+		targets:  targets,
 		sink:     sink,
 		events:   events,
 		features: features,
@@ -65,8 +65,8 @@ func NewActiveEngine(
 func (e *ActiveEngine) Run(ctx context.Context) {
 	pingWorkers := positive(e.cfg.PingWorkers, 512)
 	tcpWorkers := positive(e.cfg.TCPWorkers, 256)
-	pingJobs := make(chan domain.Device, pingWorkers*2)
-	tcpJobs := make(chan domain.Device, tcpWorkers*2)
+	pingJobs := make(chan domain.MonitoringTarget, pingWorkers*2)
+	tcpJobs := make(chan domain.MonitoringTarget, tcpWorkers*2)
 
 	var wg sync.WaitGroup
 	for i := 0; i < pingWorkers; i++ {
@@ -100,7 +100,7 @@ func (e *ActiveEngine) Run(ctx context.Context) {
 	e.logger.Info("[OK] Active monitoring engine stopped")
 }
 
-func (e *ActiveEngine) schedule(ctx context.Context, kind string, interval time.Duration, jobs chan<- domain.Device) {
+func (e *ActiveEngine) schedule(ctx context.Context, kind string, interval time.Duration, jobs chan<- domain.MonitoringTarget) {
 	if interval <= 0 {
 		interval = 5 * time.Second
 	}
@@ -118,56 +118,55 @@ func (e *ActiveEngine) schedule(ctx context.Context, kind string, interval time.
 	}
 }
 
-func (e *ActiveEngine) enqueueActiveDevices(ctx context.Context, kind string, jobs chan<- domain.Device) {
-	devices, err := e.devices.ListActive(ctx)
+func (e *ActiveEngine) enqueueActiveDevices(ctx context.Context, kind string, jobs chan<- domain.MonitoringTarget) {
+	targets, err := e.targets.ListActiveByCheckType(ctx, domain.CheckType(kind))
 	if err != nil {
-		e.logger.Error("Active device list failed", "kind", kind, "detail", err)
+		e.logger.Error("Active target list failed", "kind", kind, "detail", err)
 		return
 	}
 
-	for _, device := range devices {
+	for _, target := range targets {
 		select {
 		case <-ctx.Done():
 			return
-		case jobs <- device:
+		case jobs <- target:
 		}
 	}
 }
 
-func (e *ActiveEngine) pingWorker(ctx context.Context, jobs <-chan domain.Device) {
+func (e *ActiveEngine) pingWorker(ctx context.Context, jobs <-chan domain.MonitoringTarget) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case device := <-jobs:
-			metric := e.ping(ctx, device)
+		case target := <-jobs:
+			metric := e.ping(ctx, target)
 			e.sink.WritePing(ctx, metric)
 			if e.features != nil {
 				vector := e.features.AddPing(metric)
 				e.maybePublishAnomaly(ctx, metric, vector)
 			}
-			e.publishPingEvents(metric, device)
-			if metric.StatusUp {
-				_ = e.devices.MarkSeen(ctx, device.ID)
-			}
+			e.publishPingEvents(metric, target)
+			_ = e.targets.MarkChecked(ctx, target.ID, metric.StatusUp)
 		}
 	}
 }
 
-func (e *ActiveEngine) tcpWorker(ctx context.Context, jobs <-chan domain.Device) {
+func (e *ActiveEngine) tcpWorker(ctx context.Context, jobs <-chan domain.MonitoringTarget) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case device := <-jobs:
-			metric := e.tcpCheck(ctx, device)
+		case target := <-jobs:
+			metric := e.tcpCheck(ctx, target)
 			e.sink.WriteTCP(ctx, metric)
+			_ = e.targets.MarkChecked(ctx, target.ID, metric.Success)
 			if !metric.Success {
 				e.events.Publish(domain.RealtimeEvent{
 					Type:      "tcp.service_down",
 					Severity:  "critical",
 					Workspace: metric.Workspace,
-					DeviceID:  metric.DeviceID,
+					TargetID:  metric.TargetID,
 					IP:        metric.IP,
 					Title:     "TCP service down",
 					Message:   fmt.Sprintf("%s:%d cannot be reached", metric.IP, metric.Port),
@@ -182,16 +181,16 @@ func (e *ActiveEngine) tcpWorker(ctx context.Context, jobs <-chan domain.Device)
 	}
 }
 
-func (e *ActiveEngine) ping(ctx context.Context, device domain.Device) domain.PingMetric {
+func (e *ActiveEngine) ping(ctx context.Context, target domain.MonitoringTarget) domain.PingMetric {
 	started := time.Now()
 	metric := domain.PingMetric{
-		DeviceID:  device.ID,
-		Workspace: workspaceSlug(device),
-		IP:        device.IPAddress,
+		TargetID:  target.ID,
+		Workspace: targetWorkspaceSlug(target),
+		IP:        target.Host,
 		Timestamp: started,
 	}
 
-	pinger, err := probing.NewPinger(device.IPAddress)
+	pinger, err := probing.NewPinger(target.Host)
 	if err != nil {
 		metric.PacketLoss = 100
 		return metric
@@ -212,7 +211,7 @@ func (e *ActiveEngine) ping(ctx context.Context, device domain.Device) domain.Pi
 		return metric
 	case err := <-done:
 		if err != nil {
-			up, latency := tcpFallbackProbe(ctx, device.IPAddress, e.cfg.DefaultTCPPort, e.cfg.PingTimeout)
+			up, latency := tcpFallbackProbe(ctx, target.Host, e.cfg.DefaultTCPPort, e.cfg.PingTimeout)
 			metric.StatusUp = up
 			if up {
 				metric.LatencyMS = latency
@@ -234,15 +233,18 @@ func (e *ActiveEngine) ping(ctx context.Context, device domain.Device) domain.Pi
 	return metric
 }
 
-func (e *ActiveEngine) tcpCheck(ctx context.Context, device domain.Device) domain.TCPMetric {
-	port := device.EffectiveTCPPort(e.cfg.DefaultTCPPort)
+func (e *ActiveEngine) tcpCheck(ctx context.Context, target domain.MonitoringTarget) domain.TCPMetric {
+	port := target.Port
+	if port <= 0 {
+		port = e.cfg.DefaultTCPPort
+	}
 	timeout := durationOr(e.cfg.TCPTimeout, 3*time.Second)
 	started := time.Now()
 
 	metric := domain.TCPMetric{
-		DeviceID:  device.ID,
-		Workspace: workspaceSlug(device),
-		IP:        device.IPAddress,
+		TargetID:  target.ID,
+		Workspace: targetWorkspaceSlug(target),
+		IP:        target.Host,
 		Port:      port,
 		Timestamp: started,
 	}
@@ -251,7 +253,7 @@ func (e *ActiveEngine) tcpCheck(ctx context.Context, device domain.Device) domai
 	dialCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	conn, err := dialer.DialContext(dialCtx, "tcp", net.JoinHostPort(device.IPAddress, fmt.Sprintf("%d", port)))
+	conn, err := dialer.DialContext(dialCtx, "tcp", net.JoinHostPort(target.Host, fmt.Sprintf("%d", port)))
 	metric.ConnectDurationMS = roundMS(time.Since(started))
 	if err != nil {
 		metric.Timeout = errors.Is(dialCtx.Err(), context.DeadlineExceeded)
@@ -263,16 +265,16 @@ func (e *ActiveEngine) tcpCheck(ctx context.Context, device domain.Device) domai
 	return metric
 }
 
-func (e *ActiveEngine) publishPingEvents(metric domain.PingMetric, device domain.Device) {
+func (e *ActiveEngine) publishPingEvents(metric domain.PingMetric, target domain.MonitoringTarget) {
 	if !metric.StatusUp {
 		e.events.Publish(domain.RealtimeEvent{
 			Type:      "ap.down",
 			Severity:  "critical",
 			Workspace: metric.Workspace,
-			DeviceID:  metric.DeviceID,
+			TargetID:  metric.TargetID,
 			IP:        metric.IP,
-			Title:     "Device down",
-			Message:   fmt.Sprintf("%s is not responding", device.Name),
+			Title:     "Target down",
+			Message:   fmt.Sprintf("%s is not responding", target.Name),
 		})
 		return
 	}
@@ -282,10 +284,10 @@ func (e *ActiveEngine) publishPingEvents(metric domain.PingMetric, device domain
 			Type:      "latency.high",
 			Severity:  "warning",
 			Workspace: metric.Workspace,
-			DeviceID:  metric.DeviceID,
+			TargetID:  metric.TargetID,
 			IP:        metric.IP,
 			Title:     "High latency",
-			Message:   fmt.Sprintf("%s latency is %.2f ms", device.Name, metric.LatencyMS),
+			Message:   fmt.Sprintf("%s latency is %.2f ms", target.Name, metric.LatencyMS),
 			Attributes: map[string]any{
 				"latency_ms": metric.LatencyMS,
 			},
@@ -297,10 +299,10 @@ func (e *ActiveEngine) publishPingEvents(metric domain.PingMetric, device domain
 			Type:      "packet_loss.high",
 			Severity:  "warning",
 			Workspace: metric.Workspace,
-			DeviceID:  metric.DeviceID,
+			TargetID:  metric.TargetID,
 			IP:        metric.IP,
 			Title:     "Packet loss high",
-			Message:   fmt.Sprintf("%s packet loss is %.2f%%", device.Name, metric.PacketLoss),
+			Message:   fmt.Sprintf("%s packet loss is %.2f%%", target.Name, metric.PacketLoss),
 			Attributes: map[string]any{
 				"packet_loss": metric.PacketLoss,
 			},
@@ -320,7 +322,7 @@ func (e *ActiveEngine) maybePublishAnomaly(ctx context.Context, metric domain.Pi
 		return
 	}
 	anomaly := domain.AnomalyMetric{
-		DeviceID:            metric.DeviceID,
+		TargetID:            metric.TargetID,
 		Workspace:           metric.Workspace,
 		IP:                  metric.IP,
 		Score:               score,
@@ -337,7 +339,7 @@ func (e *ActiveEngine) maybePublishAnomaly(ctx context.Context, metric domain.Pi
 		Type:      "anomaly.detected",
 		Severity:  "warning",
 		Workspace: metric.Workspace,
-		DeviceID:  metric.DeviceID,
+		TargetID:  metric.TargetID,
 		IP:        metric.IP,
 		Title:     "Network anomaly detected",
 		Message:   fmt.Sprintf("Anomaly score %.2f", score),
@@ -369,6 +371,13 @@ func workspaceSlug(device domain.Device) string {
 		return device.Workspace.Slug
 	}
 	return fmt.Sprintf("%d", device.WorkspaceID)
+}
+
+func targetWorkspaceSlug(target domain.MonitoringTarget) string {
+	if target.Workspace.Slug != "" {
+		return target.Workspace.Slug
+	}
+	return fmt.Sprintf("%d", target.WorkspaceID)
 }
 
 func positive(value, fallback int) int {

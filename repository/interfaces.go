@@ -27,6 +27,15 @@ type DeviceRepository interface {
 	MarkSeen(ctx context.Context, id uint) error
 }
 
+type MonitoringTargetRepository interface {
+	List(ctx context.Context, workspaceID *uint) ([]domain.MonitoringTarget, error)
+	ListActiveByCheckType(ctx context.Context, checkType domain.CheckType) ([]domain.MonitoringTarget, error)
+	FindByID(ctx context.Context, id uint) (*domain.MonitoringTarget, error)
+	Create(ctx context.Context, target *domain.MonitoringTarget) error
+	Delete(ctx context.Context, id uint) error
+	MarkChecked(ctx context.Context, id uint, status bool) error
+}
+
 type NotificationRepository interface {
 	Create(ctx context.Context, notification *domain.Notification) error
 	ListUnread(ctx context.Context, workspaceID uint, userID *uint) ([]domain.Notification, error)
