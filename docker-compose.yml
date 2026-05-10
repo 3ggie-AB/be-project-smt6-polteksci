@@ -1,0 +1,60 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: netmonitor
+      MYSQL_USER: netmonitor
+      MYSQL_PASSWORD: netmonitor
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./migrations/001_mysql_observability.sql:/docker-entrypoint-initdb.d/001_mysql_observability.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-unetmonitor", "-pnetmonitor"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  influxdb:
+    image: influxdb:2.7
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: adminadmin
+      DOCKER_INFLUXDB_INIT_ORG: netmonitor
+      DOCKER_INFLUXDB_INIT_BUCKET: network_metrics
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: dev-token-change-me
+    ports:
+      - "8086:8086"
+    volumes:
+      - influx_data:/var/lib/influxdb2
+
+  api:
+    build: .
+    depends_on:
+      mysql:
+        condition: service_healthy
+      influxdb:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      PORT: 8080
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: netmonitor
+      MYSQL_PASSWORD: netmonitor
+      MYSQL_DATABASE: netmonitor
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: dev-token-change-me
+      INFLUX_ORG: netmonitor
+      INFLUX_BUCKET: network_metrics
+    ports:
+      - "8080:8080"
+      - "5514:5514/udp"
+
+volumes:
+  mysql_data:
+  influx_data:
