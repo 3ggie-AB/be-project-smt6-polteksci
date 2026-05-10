@@ -48,6 +48,20 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"name":        "NetMonitor API",
+			"description": "Backend API untuk observability dan monitoring jaringan: ping, TCP health check, syslog, SNMP, Ruijie telemetry, realtime SSE, dan ML-ready metrics.",
+			"status":      "running",
+			"endpoints": gin.H{
+				"health":  "/healthz",
+				"login":   "/api/auth/login",
+				"stream":  "/api/stream",
+				"devices": "/api/devices",
+			},
+		})
+	})
+
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status": "ok",
