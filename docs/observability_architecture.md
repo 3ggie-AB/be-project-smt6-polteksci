@@ -1,123 +1,50 @@
-# NetMonitor Enterprise Observability Architecture
+# NetMonitor Fiber Architecture
 
-## Folder Structure
+Project sekarang memakai Fiber + GORM + MySQL dengan struktur mirip Laravel.
 
 ```text
-cmd/server/           HTTP server entrypoint
-internal/app/         Dependency injection, router wiring, graceful shutdown
-internal/config/      Environment config loader
-domain/              Entity and metric contracts
-repository/          Repository interfaces
-mysql/               GORM MySQL store and migrations
-influx/              Async InfluxDB writer with batching and retry
-auth/                Local password login and JWT service
-middleware/          JWT and RBAC middleware
-service/             Application services
-collector/           Active and passive telemetry collectors
-ml/                  Feature engineering and ONNX-ready vectors
-websocket/           SSE realtime broker
-migrations/          SQL schema
+app/models              GORM models
+app/http/controllers    HTTP controllers
+app/http/middleware     Auth/role middleware
+bootstrap               App bootstrapping
+config                  Env config dan logger
+database                MySQL connection + auto migrate
+routes                  Route registration
+migrations              SQL reference schema
 ```
 
-## Persistence Strategy
+## Tables
 
-MySQL is authoritative for metadata:
-
-- `users`, `roles`, `workspaces`
-- `devices`, `device_groups`, `device_group_members`
-- `monitoring_targets`
+- `users`
+- `sessions`
+- `devices`
+- `device_status`
+- `monitoring_configs`
+- `alerts`
 - `notifications`
+- `activity_logs`
+- `network_topology`
+- `ml_predictions`
+- `ml_anomalies`
 
-InfluxDB is authoritative for time-series:
+## Runtime
 
-- `ping_metrics`
-- `tcp_metrics`
-- `ap_metrics`
-- `anomaly_metrics`
-- `syslog_events`
+1. Load `.env`
+2. Auto-create MySQL database jika belum ada
+3. Connect MySQL
+4. Run GORM `AutoMigrate`
+5. Start Fiber server
 
-Influx tags:
+## Auth
 
-- `device_id`
-- `target_id`
-- `workspace`
-- `ip`
-- `ap_name` when available
-- `source` for passive telemetry
+Auth memakai tabel `sessions`. Login membuat session token, lalu endpoint protected memakai:
 
-Influx fields:
-
-- ping: `latency`, `packet_loss`, `response_time`, `status_up`
-- TCP: `connect_duration`, `success`, `timeout`, `error`
-- AP/SNMP/Ruijie: `client_count`, `cpu`, `memory`, `rssi`, `throughput`, `online`, `uptime`
-- anomaly: rolling feature values plus `score`
-- syslog: `message`
-
-Raw Ruijie JSON is intentionally not persisted. It is logged only when `RUIJIE_DEBUG_RAW_JSON=true`.
-
-## Authentication
-
-Local login is exposed at:
-
-- `POST /api/auth/login`
-- `POST /api/login` for compatibility with older clients
-
-If no user exists yet, the first successful login using `ADMIN_EMAIL` and `ADMIN_PASSWORD` becomes `SUPER_ADMIN`. Later users default to `USER` when created by admin workflows.
-JWT claims include `user_id`, `email`, `role`, and `workspace_id`; RBAC middleware protects admin write routes.
-
-## Monitoring Pipeline
-
-Active monitoring:
-
-- Ping reads rows from `monitoring_targets` where `check_type=ping`
-- TCP check reads rows from `monitoring_targets` where `check_type=tcp`
-- Ping scheduler interval defaults to `PING_INTERVAL=5s`
-- TCP scheduler interval defaults to `TCP_INTERVAL=30s`
-- Worker pools are bounded by `PING_WORKERS` and `TCP_WORKERS`
-- Metrics are written to InfluxDB asynchronously
-- Realtime events are published to SSE
-
-Passive monitoring:
-
-- Ruijie API polling writes AP metrics
-- SNMP polling writes AP/device telemetry fields
-- UDP Syslog receiver writes log events
-
-## Realtime Streaming
-
-Dashboard clients can subscribe through:
-
-```text
-GET /api/stream?access_token=<jwt>
+```http
+Authorization: Bearer <token>
 ```
 
-Events include:
+User pertama yang login ketika tabel `users` kosong otomatis menjadi `SUPER_ADMIN`.
 
-- `ap.down`
-- `latency.high`
-- `packet_loss.high`
-- `tcp.service_down`
-- `anomaly.detected`
-- `syslog.alert`
+## API
 
-## Machine Learning Preparation
-
-The feature layer produces an ONNX-ready vector:
-
-```text
-[latency_rolling_avg_ms, packet_loss_ratio, ap_load_score, roaming_frequency, traffic_anomaly_score]
-```
-
-The vector is suitable as a feature contract for:
-
-- Isolation Forest
-- LSTM
-- Graph Neural Network node features
-- ONNX inference runtimes
-
-Endpoint:
-
-```text
-GET /api/ml/features/:device_id
-GET /api/ml/features/targets/:target_id
-```
+Semua tabel punya CRUD API. Dokumentasi request dan response lengkap ada di [../NetMonitor_API_Spec.md](../NetMonitor_API_Spec.md).

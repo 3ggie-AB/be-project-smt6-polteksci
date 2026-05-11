@@ -1,32 +1,57 @@
 # NetMonitor
 
-Enterprise-grade network observability backend built with Go, MySQL, InfluxDB, JWT local login, active monitoring, passive collectors, SSE realtime streaming, and ML-ready feature engineering.
+Fiber + GORM + MySQL backend untuk monitoring jaringan dengan struktur direktori mirip Laravel.
+
+## Struktur
+
+```text
+app/models
+app/http/controllers
+app/http/middleware
+bootstrap
+config
+database
+routes
+migrations
+```
 
 ## Run Locally
 
 ```bash
 cp .env.example .env
-docker compose up -d mysql influxdb
-go run ./cmd/server
+go run .
 ```
 
-API health check:
+Health check:
 
 ```bash
 curl http://localhost:8080/healthz
 ```
 
-## Key Endpoints
+## Auth
 
-- `POST /api/auth/login`
-- `GET /api/devices`
-- `POST /api/devices`
-- `GET /api/targets`
-- `POST /api/targets`
-- `GET /api/stream?access_token=<jwt>`
-- `GET /api/ml/features/:device_id`
-- `GET /api/ml/features/targets/:target_id`
+Login pertama akan membuat user pertama sebagai `SUPER_ADMIN`.
 
-## Architecture
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"secret123"}'
+```
 
-See [docs/observability_architecture.md](docs/observability_architecture.md).
+## Resource API
+
+Semua resource punya CRUD:
+
+- `/api/users`
+- `/api/sessions`
+- `/api/devices`
+- `/api/device-status`
+- `/api/monitoring-configs`
+- `/api/alerts`
+- `/api/notifications`
+- `/api/activity-logs`
+- `/api/network-topology`
+- `/api/ml-predictions`
+- `/api/ml-anomalies`
+
+Lihat [NetMonitor_API_Spec.md](NetMonitor_API_Spec.md) untuk request dan response lengkap.

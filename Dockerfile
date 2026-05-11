@@ -16,5 +16,5 @@ WORKDIR /app
 COPY --from=builder /out/netmonitor /app/netmonitor
 
 USER appuser
-EXPOSE 8080 5514/udp
+EXPOSE 8080
 ENTRYPOINT ["/app/netmonitor"]

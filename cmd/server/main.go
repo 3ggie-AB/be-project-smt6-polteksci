@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"project_smt6/internal/app"
-	"project_smt6/internal/config"
+	"project_smt6/bootstrap"
+	"project_smt6/config"
 )
 
 func main() {
@@ -16,11 +16,11 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	logger := config.NewLogger(cfg.Server.Environment)
+	logger := config.NewLogger(cfg.Env)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if err := app.Run(ctx, cfg, logger); err != nil {
+	if err := bootstrap.Run(ctx, cfg, logger); err != nil {
 		logger.Error("application failed", "error", err)
 		log.Fatal(err)
 	}
