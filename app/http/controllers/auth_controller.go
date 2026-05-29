@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	httpauth "project_smt6/app/http/auth"
 	"project_smt6/app/models"
 	"project_smt6/config"
 
@@ -56,10 +57,12 @@ func (ctl AuthController) Login(c *fiber.Ctx) error {
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "failed to create session token", err)
 	}
+	hashedToken := httpauth.TokenHash(token)
 
 	session := models.Session{
 		UserID:    user.ID,
-		Token:     token,
+		Token:     hashedToken,
+		TokenHash: hashedToken,
 		ExpiredAt: time.Now().Add(ctl.Config.SessionTTL),
 	}
 	if err := ctl.DB.Create(&session).Error; err != nil {
@@ -75,11 +78,11 @@ func (ctl AuthController) Login(c *fiber.Ctx) error {
 }
 
 func (ctl AuthController) Logout(c *fiber.Ctx) error {
-	token := bearerToken(c)
+	token := httpauth.BearerToken(c)
 	if token == "" {
 		return errorResponse(c, fiber.StatusUnauthorized, "token is required", nil)
 	}
-	if err := ctl.DB.Where("token = ?", token).Delete(&models.Session{}).Error; err != nil {
+	if err := ctl.DB.Where("token_hash = ?", httpauth.TokenHash(token)).Delete(&models.Session{}).Error; err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "failed to logout", err)
 	}
 	return c.JSON(fiber.Map{"message": "logout berhasil"})
@@ -126,13 +129,4 @@ func randomToken() (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(buf), nil
-}
-
-func bearerToken(c *fiber.Ctx) string {
-	header := c.Get("Authorization")
-	parts := strings.SplitN(header, " ", 2)
-	if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
-		return strings.TrimSpace(parts[1])
-	}
-	return strings.TrimSpace(c.Query("access_token"))
 }

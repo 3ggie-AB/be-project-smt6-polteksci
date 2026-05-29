@@ -18,6 +18,7 @@ type AppConfig struct {
 	SessionTTL time.Duration
 	CORS       []string
 	MySQL      MySQLConfig
+	Monitoring MonitoringConfig
 }
 
 type MySQLConfig struct {
@@ -27,6 +28,35 @@ type MySQLConfig struct {
 	Password string
 	Database string
 	Location string
+}
+
+type MonitoringConfig struct {
+	Enabled bool
+	Ping    PingConfig
+	SNMP    SNMPConfig
+}
+
+type PingConfig struct {
+	Enabled                  bool
+	Interval                 time.Duration
+	Timeout                  time.Duration
+	Count                    int
+	Workers                  int
+	WarningLatencyMS         float64
+	WarningPacketLossPercent float64
+}
+
+type SNMPConfig struct {
+	Enabled   bool
+	Interval  time.Duration
+	Port      uint16
+	Timeout   time.Duration
+	Retries   int
+	Community string
+	Version   string
+	CPUOID    string
+	MemoryOID string
+	Workers   int
 }
 
 func Load() (AppConfig, error) {
@@ -46,6 +76,30 @@ func Load() (AppConfig, error) {
 			Password: env("MYSQL_PASSWORD", env("DB_PASSWORD", "netmonitor")),
 			Database: env("MYSQL_DATABASE", env("DB_NAME", "netmonitor")),
 			Location: env("MYSQL_LOCATION", "Asia%2FJakarta"),
+		},
+		Monitoring: MonitoringConfig{
+			Enabled: EnvBool("MONITORING_ENABLED", true),
+			Ping: PingConfig{
+				Enabled:                  EnvBool("PING_ENABLED", true),
+				Interval:                 duration("PING_INTERVAL", 5*time.Second),
+				Timeout:                  duration("PING_TIMEOUT", 3*time.Second),
+				Count:                    intEnv("PING_COUNT", 3),
+				Workers:                  intEnv("PING_WORKERS", 64),
+				WarningLatencyMS:         floatEnv("HIGH_LATENCY_MS", 0),
+				WarningPacketLossPercent: packetLossPercentEnv("HIGH_PACKET_LOSS_RATIO", 0),
+			},
+			SNMP: SNMPConfig{
+				Enabled:   EnvBool("SNMP_ENABLED", false),
+				Interval:  duration("SNMP_POLL_INTERVAL", 60*time.Second),
+				Port:      uint16Env("SNMP_PORT", 161),
+				Timeout:   duration("SNMP_TIMEOUT", 3*time.Second),
+				Retries:   intEnv("SNMP_RETRIES", 1),
+				Community: env("SNMP_COMMUNITY", "public"),
+				Version:   env("SNMP_VERSION", "2c"),
+				CPUOID:    env("SNMP_CPU_OID", ""),
+				MemoryOID: env("SNMP_MEMORY_OID", ""),
+				Workers:   intEnv("SNMP_WORKERS", 64),
+			},
 		},
 	}
 
@@ -96,6 +150,50 @@ func duration(key string, fallback time.Duration) time.Duration {
 	parsed, err := time.ParseDuration(raw)
 	if err != nil {
 		return fallback
+	}
+	return parsed
+}
+
+func intEnv(key string, fallback int) int {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(raw)
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+	return parsed
+}
+
+func uint16Env(key string, fallback uint16) uint16 {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseUint(raw, 10, 16)
+	if err != nil || parsed == 0 {
+		return fallback
+	}
+	return uint16(parsed)
+}
+
+func floatEnv(key string, fallback float64) float64 {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseFloat(raw, 64)
+	if err != nil || parsed < 0 {
+		return fallback
+	}
+	return parsed
+}
+
+func packetLossPercentEnv(key string, fallback float64) float64 {
+	parsed := floatEnv(key, fallback)
+	if parsed > 0 && parsed <= 1 {
+		return parsed * 100
 	}
 	return parsed
 }

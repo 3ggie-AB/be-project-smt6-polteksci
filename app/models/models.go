@@ -40,13 +40,6 @@ const (
 	AlertStatusResolved AlertStatus = "RESOLVED"
 )
 
-type AnomalySeverity string
-
-const (
-	AnomalySeverityWarning  AnomalySeverity = "WARNING"
-	AnomalySeverityCritical AnomalySeverity = "CRITICAL"
-)
-
 type User struct {
 	ID        uint64    `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name      string    `json:"name" gorm:"type:varchar(160);not null"`
@@ -60,7 +53,8 @@ type Session struct {
 	ID        uint64    `json:"id" gorm:"primaryKey;autoIncrement"`
 	UserID    uint64    `json:"user_id" gorm:"not null;index"`
 	User      User      `json:"user,omitempty" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	Token     string    `json:"token" gorm:"type:text;not null"`
+	Token     string    `json:"-" gorm:"column:token;type:text;not null"`
+	TokenHash string    `json:"-" gorm:"column:token_hash;type:char(64);not null;index"`
 	ExpiredAt time.Time `json:"expired_at" gorm:"not null;index"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
@@ -149,26 +143,6 @@ func (NetworkTopology) TableName() string {
 	return "network_topology"
 }
 
-type MLPrediction struct {
-	ID              uint64    `json:"id" gorm:"primaryKey;autoIncrement"`
-	DeviceID        uint64    `json:"device_id" gorm:"not null;index"`
-	Device          Device    `json:"device,omitempty" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	PredictionType  string    `json:"prediction_type" gorm:"type:varchar(120);not null;index"`
-	PredictionValue float64   `json:"prediction_value" gorm:"not null;default:0"`
-	ConfidenceScore float64   `json:"confidence_score" gorm:"not null;default:0"`
-	CreatedAt       time.Time `json:"created_at" gorm:"autoCreateTime"`
-}
-
-type MLAnomaly struct {
-	ID           uint64          `json:"id" gorm:"primaryKey;autoIncrement"`
-	DeviceID     uint64          `json:"device_id" gorm:"not null;index"`
-	Device       Device          `json:"device,omitempty" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	AnomalyScore float64         `json:"anomaly_score" gorm:"not null;default:0"`
-	Prediction   string          `json:"prediction" gorm:"type:varchar(255);not null"`
-	Severity     AnomalySeverity `json:"severity" gorm:"type:enum('WARNING','CRITICAL');not null;index"`
-	CreatedAt    time.Time       `json:"created_at" gorm:"autoCreateTime"`
-}
-
 func ModelsForMigration() []any {
 	return []any{
 		&User{},
@@ -180,7 +154,5 @@ func ModelsForMigration() []any {
 		&Notification{},
 		&ActivityLog{},
 		&NetworkTopology{},
-		&MLPrediction{},
-		&MLAnomaly{},
 	}
 }

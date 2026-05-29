@@ -1,9 +1,9 @@
 package middleware
 
 import (
-	"strings"
 	"time"
 
+	httpauth "project_smt6/app/http/auth"
 	"project_smt6/app/models"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,14 +12,14 @@ import (
 
 func Auth(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		token := bearerToken(c)
+		token := httpauth.BearerToken(c)
 		if token == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication token is required"})
 		}
 
 		var session models.Session
 		err := db.Preload("User").
-			Where("token = ? AND expired_at > ?", token, time.Now()).
+			Where("token_hash = ? AND expired_at > ?", httpauth.TokenHash(token), time.Now()).
 			First(&session).Error
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication token is invalid or expired"})
@@ -47,13 +47,4 @@ func Role(roles ...models.UserRole) fiber.Handler {
 		}
 		return c.Next()
 	}
-}
-
-func bearerToken(c *fiber.Ctx) string {
-	header := c.Get("Authorization")
-	parts := strings.SplitN(header, " ", 2)
-	if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
-		return strings.TrimSpace(parts[1])
-	}
-	return strings.TrimSpace(c.Query("access_token"))
 }

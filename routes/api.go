@@ -16,13 +16,12 @@ func Register(app *fiber.App, db *gorm.DB, cfg config.AppConfig) {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"name":        cfg.Name,
-			"description": "Fiber API untuk monitoring jaringan, device inventory, alerting, notification, topology, dan ML observability.",
+			"description": "Fiber API untuk monitoring jaringan, device inventory, alerting, notification, dan topology.",
 			"status":      "running",
 			"endpoints": fiber.Map{
 				"health":             "/healthz",
 				"login":              "/api/auth/login",
 				"users":              "/api/users",
-				"sessions":           "/api/sessions",
 				"devices":            "/api/devices",
 				"device_status":      "/api/device-status",
 				"monitoring_configs": "/api/monitoring-configs",
@@ -30,8 +29,6 @@ func Register(app *fiber.App, db *gorm.DB, cfg config.AppConfig) {
 				"notifications":      "/api/notifications",
 				"activity_logs":      "/api/activity-logs",
 				"network_topology":   "/api/network-topology",
-				"ml_predictions":     "/api/ml-predictions",
-				"ml_anomalies":       "/api/ml-anomalies",
 			},
 		})
 	})
@@ -58,7 +55,6 @@ func Register(app *fiber.App, db *gorm.DB, cfg config.AppConfig) {
 	protected.Post("/auth/logout", auth.Logout)
 
 	registerUsers(protected, db)
-	registerResource[models.Session](protected, db, "/sessions", "session")
 	registerResource[models.Device](protected, db, "/devices", "device")
 	registerResource[models.DeviceStatus](protected, db, "/device-status", "device status")
 	registerResource[models.MonitoringConfig](protected, db, "/monitoring-configs", "monitoring config")
@@ -66,8 +62,6 @@ func Register(app *fiber.App, db *gorm.DB, cfg config.AppConfig) {
 	registerResource[models.Notification](protected, db, "/notifications", "notification")
 	registerResource[models.ActivityLog](protected, db, "/activity-logs", "activity log")
 	registerResource[models.NetworkTopology](protected, db, "/network-topology", "network topology")
-	registerResource[models.MLPrediction](protected, db, "/ml-predictions", "ml prediction")
-	registerResource[models.MLAnomaly](protected, db, "/ml-anomalies", "ml anomaly")
 }
 
 func registerUsers(router fiber.Router, db *gorm.DB) {

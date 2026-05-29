@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"project_smt6/app/services/monitoring"
 	"project_smt6/config"
 	"project_smt6/database"
 	"project_smt6/routes"
@@ -44,6 +45,7 @@ func Run(ctx context.Context, cfg config.AppConfig, logger *slog.Logger) error {
 	}))
 
 	routes.Register(app, db, cfg)
+	monitoring.NewService(db, cfg.Monitoring, logger).Start(ctx)
 
 	serverErr := make(chan error, 1)
 	go func() {

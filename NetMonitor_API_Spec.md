@@ -1,30 +1,41 @@
-# NetMonitor Fiber API Specification
+# NetMonitor API Implementation Specification
 
-**Version:** v3.0  
+**Version:** v4.0  
 **Base URL:** `http://localhost:8080`  
-**Stack:** Fiber + GORM + MySQL  
-**Auth:** Session token via `Authorization: Bearer <token>`  
+**Stack:** Go Fiber + GORM + MySQL  
+**Auth:** Opaque session token via `Authorization: Bearer <token>`  
 
-Backend sekarang memakai struktur mirip Laravel:
+Dokumen ini mengikuti implementasi backend saat ini. Semua endpoint resource berada di bawah `/api` dan membutuhkan token login, kecuali root, health check, dan login.
 
-```text
-app/models
-app/http/controllers
-app/http/middleware
-bootstrap
-config
-database
-routes
-migrations
-```
+## Runtime Behavior
 
-GORM menjalankan `AutoMigrate` untuk semua model saat aplikasi start.
+Saat aplikasi start:
+
+1. Load `.env`.
+2. Buat database MySQL jika belum ada.
+3. Jalankan GORM `AutoMigrate`.
+4. Register route Fiber.
+5. Start background monitoring worker untuk ping dan SNMP jika enabled.
+
+Worker monitoring membaca tabel `devices` dan `monitoring_configs`, menjalankan probe, menyimpan hasil ke `device_status`, lalu mengubah `devices.status` menjadi `ONLINE`, `WARNING`, atau `OFFLINE`.
 
 ## Authentication
 
-Login pertama otomatis membuat user pertama sebagai `SUPER_ADMIN` jika tabel `users` masih kosong.
+Login menghasilkan token random sepanjang 64 karakter. Token plaintext hanya dikirim sekali pada response login. Database menyimpan hash SHA-256 token di `sessions.token_hash`; field token/hash tidak muncul di response JSON session.
+
+Header protected endpoint:
+
+```http
+Authorization: Bearer <token>
+```
+
+Query `access_token` masih diterima untuk kompatibilitas, tetapi header `Authorization` lebih disarankan.
 
 ### POST `/api/auth/login`
+
+Alias: `POST /api/login`
+
+Login pertama saat tabel `users` kosong akan membuat user pertama sebagai `SUPER_ADMIN`.
 
 Request:
 
@@ -35,7 +46,7 @@ Request:
 }
 ```
 
-Response:
+Success `200`:
 
 ```json
 {
@@ -44,29 +55,32 @@ Response:
   "session": {
     "id": 1,
     "user_id": 1,
-    "token": "SESSION_TOKEN",
-    "expired_at": "2026-05-12T10:00:00+07:00",
-    "created_at": "2026-05-11T10:00:00+07:00"
+    "expired_at": "2026-05-30T10:00:00+07:00",
+    "created_at": "2026-05-29T10:00:00+07:00"
   },
   "user": {
     "id": 1,
     "name": "admin",
     "email": "admin@example.com",
     "role": "SUPER_ADMIN",
-    "created_at": "2026-05-11T10:00:00+07:00"
+    "created_at": "2026-05-29T10:00:00+07:00"
   }
 }
 ```
 
-Gunakan token:
+Error `401`:
 
-```http
-Authorization: Bearer SESSION_TOKEN
+```json
+{
+  "error": "email or password is invalid"
+}
 ```
 
 ### GET `/api/auth/me`
 
-Response:
+Alias: `GET /api/me`
+
+Success `200`:
 
 ```json
 {
@@ -75,14 +89,16 @@ Response:
     "name": "admin",
     "email": "admin@example.com",
     "role": "SUPER_ADMIN",
-    "created_at": "2026-05-11T10:00:00+07:00"
+    "created_at": "2026-05-29T10:00:00+07:00"
   }
 }
 ```
 
 ### POST `/api/auth/logout`
 
-Response:
+Menghapus session berdasarkan hash token aktif.
+
+Success `200`:
 
 ```json
 {
@@ -90,20 +106,81 @@ Response:
 }
 ```
 
+## Authorization Rules
+
+| Area | SUPER_ADMIN | ADMIN | USER |
+| --- | --- | --- | --- |
+| Login, logout, me | Yes | Yes | Yes |
+| List/detail protected resource | Yes | Yes | Yes |
+| Create user | Yes | Yes, regular `USER` only | No |
+| Update user | Yes | Regular `USER` only, cannot promote role | No |
+| Delete user | Yes | No | No |
+| Create/update/delete non-user resource | Yes | Yes | No |
+
+`/api/sessions` tidak disediakan sebagai CRUD publik/protected untuk mencegah kebocoran token session.
+
+## Root And Health
+
+### GET `/`
+
+Public endpoint untuk info aplikasi dan daftar endpoint utama.
+
+Success `200`:
+
+```json
+{
+  "name": "NetMonitor API",
+  "description": "Fiber API untuk monitoring jaringan, device inventory, alerting, notification, topology, dan ML observability.",
+  "status": "running",
+  "endpoints": {
+    "health": "/healthz",
+    "login": "/api/auth/login",
+    "users": "/api/users",
+    "devices": "/api/devices",
+    "device_status": "/api/device-status",
+    "monitoring_configs": "/api/monitoring-configs",
+    "alerts": "/api/alerts",
+    "notifications": "/api/notifications",
+    "activity_logs": "/api/activity-logs",
+    "network_topology": "/api/network-topology",
+    "ml_predictions": "/api/ml-predictions",
+    "ml_anomalies": "/api/ml-anomalies"
+  }
+}
+```
+
+### GET `/healthz`
+
+Public endpoint untuk health check sederhana.
+
+Success `200`:
+
+```json
+{
+  "status": "ok",
+  "stack": "fiber + gorm + mysql",
+  "mysql": {
+    "host": "localhost",
+    "port": "3306",
+    "database": "netmonitor"
+  }
+}
+```
+
 ## Standard CRUD Pattern
 
-Semua tabel punya pola endpoint:
+Semua resource di bawah ini memakai pola umum:
 
-| Method | URL | Fungsi |
-| --- | --- | --- |
-| `GET` | `/api/<resource>` | List semua data |
-| `POST` | `/api/<resource>` | Create data |
-| `GET` | `/api/<resource>/:id` | Detail data |
-| `PUT` | `/api/<resource>/:id` | Update data |
-| `PATCH` | `/api/<resource>/:id` | Partial update |
-| `DELETE` | `/api/<resource>/:id` | Delete data |
+| Method | Path | Access | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/<resource>` | Any logged-in user | List data |
+| `POST` | `/api/<resource>` | `SUPER_ADMIN`, `ADMIN` | Create data |
+| `GET` | `/api/<resource>/:id` | Any logged-in user | Detail data |
+| `PUT` | `/api/<resource>/:id` | `SUPER_ADMIN`, `ADMIN` | Full/partial update |
+| `PATCH` | `/api/<resource>/:id` | `SUPER_ADMIN`, `ADMIN` | Partial update |
+| `DELETE` | `/api/<resource>/:id` | `SUPER_ADMIN`, `ADMIN` | Delete data |
 
-Response list:
+List response:
 
 ```json
 {
@@ -111,7 +188,7 @@ Response list:
 }
 ```
 
-Response detail/create/update:
+Create/detail/update response:
 
 ```json
 {
@@ -119,53 +196,21 @@ Response detail/create/update:
 }
 ```
 
-Error:
+Delete response:
 
 ```json
 {
-  "error": "failed to create device",
-  "detail": "..."
+  "message": "resource deleted"
 }
 ```
 
-## Resource Endpoints
+## Users
 
-| Table | Resource URL |
-| --- | --- |
-| `users` | `/api/users` |
-| `sessions` | `/api/sessions` |
-| `devices` | `/api/devices` |
-| `device_status` | `/api/device-status` |
-| `monitoring_configs` | `/api/monitoring-configs` |
-| `alerts` | `/api/alerts` |
-| `notifications` | `/api/notifications` |
-| `activity_logs` | `/api/activity-logs` |
-| `network_topology` | `/api/network-topology` |
-| `ml_predictions` | `/api/ml-predictions` |
-| `ml_anomalies` | `/api/ml-anomalies` |
+Base path: `/api/users`
 
-## Models And Examples
-
-### Users
-
-Table:
-
-```dbml
-Table users {
-  id bigint [pk, increment]
-  name varchar
-  email varchar [unique]
-  password varchar
-  role varchar
-  created_at timestamp
-}
-```
+User delete hanya boleh oleh `SUPER_ADMIN`.
 
 Create:
-
-```http
-POST /api/users
-```
 
 ```json
 {
@@ -176,6 +221,14 @@ POST /api/users
 }
 ```
 
+Rules:
+
+- `name`, `email`, dan `password` wajib saat create.
+- Email harus valid.
+- Password minimal 8 karakter.
+- Role valid: `SUPER_ADMIN`, `ADMIN`, `USER`.
+- `ADMIN` hanya boleh create/update regular `USER`.
+
 Response:
 
 ```json
@@ -185,69 +238,16 @@ Response:
     "name": "Operator",
     "email": "operator@example.com",
     "role": "USER",
-    "created_at": "2026-05-11T10:05:00+07:00"
+    "created_at": "2026-05-29T10:05:00+07:00"
   }
 }
 ```
 
-### Sessions
+## Devices
 
-Table:
+Base path: `/api/devices`
 
-```dbml
-Table sessions {
-  id bigint [pk, increment]
-  user_id bigint
-  token text
-  expired_at timestamp
-  created_at timestamp
-}
-```
-
-List:
-
-```http
-GET /api/sessions
-```
-
-Response:
-
-```json
-{
-  "data": [
-    {
-      "id": 1,
-      "user_id": 1,
-      "token": "SESSION_TOKEN",
-      "expired_at": "2026-05-12T10:00:00+07:00",
-      "created_at": "2026-05-11T10:00:00+07:00"
-    }
-  ]
-}
-```
-
-### Devices
-
-Table:
-
-```dbml
-Table devices {
-  id bigint [pk, increment]
-  name varchar
-  ip varchar
-  type enum("AP", "SERVICE")
-  vendor varchar
-  location varchar
-  status enum("ONLINE", "OFFLINE", "WARNING")
-  created_at timestamp
-}
-```
-
-Create AP:
-
-```http
-POST /api/devices
-```
+Create:
 
 ```json
 {
@@ -256,127 +256,80 @@ POST /api/devices
   "type": "AP",
   "vendor": "Ruijie",
   "location": "Lobby",
-  "status": "ONLINE"
+  "status": "OFFLINE"
 }
 ```
 
-Create service:
+Fields:
 
-```json
-{
-  "name": "API Production",
-  "ip": "10.10.10.5",
-  "type": "SERVICE",
-  "vendor": "Internal",
-  "location": "Data Center",
-  "status": "WARNING"
-}
-```
+| Field | Type | Notes |
+| --- | --- | --- |
+| `name` | string | Required |
+| `ip` | string | Device IP/host target for ping/SNMP |
+| `type` | enum | `AP`, `SERVICE` |
+| `vendor` | string | Optional |
+| `location` | string | Optional |
+| `status` | enum | `ONLINE`, `OFFLINE`, `WARNING` |
 
-Response:
+Monitoring worker akan memperbarui `status` berdasarkan hasil ping/SNMP.
 
-```json
-{
-  "data": {
-    "id": 1,
-    "name": "AP Lobby",
-    "ip": "192.168.10.20",
-    "type": "AP",
-    "vendor": "Ruijie",
-    "location": "Lobby",
-    "status": "ONLINE",
-    "created_at": "2026-05-11T10:10:00+07:00"
-  }
-}
-```
+## Monitoring Configs
 
-### Device Status
-
-Table:
-
-```dbml
-Table device_status {
-  id bigint [pk, increment]
-  device_id bigint
-  latency float
-  packet_loss float
-  cpu_usage float
-  memory_usage float
-  last_seen timestamp
-}
-```
+Base path: `/api/monitoring-configs`
 
 Create:
-
-```http
-POST /api/device-status
-```
-
-```json
-{
-  "device_id": 1,
-  "latency": 12.5,
-  "packet_loss": 0.2,
-  "cpu_usage": 40.5,
-  "memory_usage": 55.1,
-  "last_seen": "2026-05-11T10:12:00+07:00"
-}
-```
-
-### Monitoring Configs
-
-Table:
-
-```dbml
-Table monitoring_configs {
-  id bigint [pk, increment]
-  device_id bigint
-  ping_enabled boolean
-  tcp_enabled boolean
-  ping_interval int
-  tcp_interval int
-  monitored_port int
-  created_at timestamp
-}
-```
-
-Create:
-
-```http
-POST /api/monitoring-configs
-```
 
 ```json
 {
   "device_id": 1,
   "ping_enabled": true,
-  "tcp_enabled": true,
+  "tcp_enabled": false,
   "ping_interval": 5,
   "tcp_interval": 30,
   "monitored_port": 443
 }
 ```
 
-### Alerts
+Current implementation:
 
-Table:
+- `ping_enabled` dipakai worker untuk menentukan apakah device diping.
+- `tcp_enabled`, `tcp_interval`, dan `monitored_port` sudah tersimpan, tetapi TCP probe belum dijalankan oleh worker saat ini.
+- Jika device belum punya config, worker memakai default ping enabled.
 
-```dbml
-Table alerts {
-  id bigint [pk, increment]
-  device_id bigint
-  severity enum("INFO", "WARNING", "CRITICAL")
-  message text
-  status enum("ACTIVE", "RESOLVED")
-  created_at timestamp
+## Device Status
+
+Base path: `/api/device-status`
+
+Worker ping/SNMP otomatis menulis data ke resource ini. Endpoint CRUD tetap tersedia untuk admin.
+
+Create manual:
+
+```json
+{
+  "device_id": 1,
+  "latency": 12.5,
+  "packet_loss": 0,
+  "cpu_usage": 35.2,
+  "memory_usage": 61.8,
+  "last_seen": "2026-05-29T10:12:00+07:00"
 }
 ```
 
-Create:
+Fields:
 
-```http
-POST /api/alerts
-```
+| Field | Type | Notes |
+| --- | --- | --- |
+| `latency` | number | Average ping latency in ms |
+| `packet_loss` | number | Packet loss percentage, e.g. `0`, `33.33`, `100` |
+| `cpu_usage` | number | Value from configured SNMP CPU OID |
+| `memory_usage` | number | Value from configured SNMP memory OID |
+| `last_seen` | timestamp | Probe timestamp |
+
+## Alerts
+
+Base path: `/api/alerts`
+
+Create:
 
 ```json
 {
@@ -387,27 +340,16 @@ POST /api/alerts
 }
 ```
 
-### Notifications
+Enums:
 
-Table:
+- `severity`: `INFO`, `WARNING`, `CRITICAL`
+- `status`: `ACTIVE`, `RESOLVED`
 
-```dbml
-Table notifications {
-  id bigint [pk, increment]
-  user_id bigint
-  alert_id bigint
-  title varchar
-  message text
-  is_read boolean
-  created_at timestamp
-}
-```
+## Notifications
+
+Base path: `/api/notifications`
 
 Create:
-
-```http
-POST /api/notifications
-```
 
 ```json
 {
@@ -419,25 +361,11 @@ POST /api/notifications
 }
 ```
 
-### Activity Logs
+## Activity Logs
 
-Table:
-
-```dbml
-Table activity_logs {
-  id bigint [pk, increment]
-  user_id bigint
-  action varchar
-  description text
-  created_at timestamp
-}
-```
+Base path: `/api/activity-logs`
 
 Create:
-
-```http
-POST /api/activity-logs
-```
 
 ```json
 {
@@ -447,26 +375,13 @@ POST /api/activity-logs
 }
 ```
 
-### Network Topology
+Catatan: pencatatan otomatis via middleware belum aktif; data saat ini dibuat melalui endpoint.
 
-Table:
+## Network Topology
 
-```dbml
-Table network_topology {
-  id bigint [pk, increment]
-  source_device_id bigint
-  target_device_id bigint
-  relation_type varchar
-  status varchar
-  created_at timestamp
-}
-```
+Base path: `/api/network-topology`
 
 Create:
-
-```http
-POST /api/network-topology
-```
 
 ```json
 {
@@ -477,26 +392,11 @@ POST /api/network-topology
 }
 ```
 
-### ML Predictions
+## ML Predictions
 
-Table:
-
-```dbml
-Table ml_predictions {
-  id bigint [pk, increment]
-  device_id bigint
-  prediction_type varchar
-  prediction_value float
-  confidence_score float
-  created_at timestamp
-}
-```
+Base path: `/api/ml-predictions`
 
 Create:
-
-```http
-POST /api/ml-predictions
-```
 
 ```json
 {
@@ -507,26 +407,11 @@ POST /api/ml-predictions
 }
 ```
 
-### ML Anomalies
+## ML Anomalies
 
-Table:
-
-```dbml
-Table ml_anomalies {
-  id bigint [pk, increment]
-  device_id bigint
-  anomaly_score float
-  prediction varchar
-  severity enum("WARNING", "CRITICAL")
-  created_at timestamp
-}
-```
+Base path: `/api/ml-anomalies`
 
 Create:
-
-```http
-POST /api/ml-anomalies
-```
 
 ```json
 {
@@ -537,18 +422,132 @@ POST /api/ml-anomalies
 }
 ```
 
-## Curl Flow Example
+Enums:
+
+- `severity`: `WARNING`, `CRITICAL`
+
+## Monitoring Worker Configuration
+
+`.env` keys:
+
+```env
+MONITORING_ENABLED=true
+PING_ENABLED=true
+PING_INTERVAL=5s
+PING_TIMEOUT=3s
+PING_COUNT=3
+PING_WORKERS=64
+HIGH_LATENCY_MS=0
+HIGH_PACKET_LOSS_RATIO=0
+
+SNMP_ENABLED=false
+SNMP_POLL_INTERVAL=60s
+SNMP_PORT=161
+SNMP_TIMEOUT=3s
+SNMP_RETRIES=1
+SNMP_COMMUNITY=public
+SNMP_VERSION=2c
+SNMP_CPU_OID=
+SNMP_MEMORY_OID=
+SNMP_WORKERS=64
+```
+
+Ping behavior:
+
+- `packet_loss = 100` membuat device `OFFLINE`.
+- Device reachable dengan packet loss atau latency melebihi threshold menjadi `WARNING`.
+- Device reachable tanpa warning menjadi `ONLINE`.
+- `HIGH_PACKET_LOSS_RATIO` menerima bentuk rasio `0.2` atau persentase `20`; keduanya diperlakukan sebagai 20%.
+- Jika threshold bernilai `0`, setiap packet loss di atas 0 menjadi `WARNING`.
+
+SNMP behavior:
+
+- SNMP aktif hanya jika `SNMP_ENABLED=true` dan minimal salah satu dari `SNMP_CPU_OID` atau `SNMP_MEMORY_OID` terisi.
+- `SNMP_VERSION` mendukung `1`/`v1`; nilai lain default ke `2c`.
+- Nilai SNMP numerik disimpan ke `cpu_usage` dan `memory_usage`.
+
+## Error Responses
+
+Body JSON invalid:
+
+```json
+{
+  "error": "invalid request body",
+  "detail": "..."
+}
+```
+
+Unauthorized:
+
+```json
+{
+  "error": "authentication token is required"
+}
+```
+
+Forbidden:
+
+```json
+{
+  "error": "insufficient permission"
+}
+```
+
+Not found:
+
+```json
+{
+  "error": "device not found"
+}
+```
+
+Database/server error:
+
+```json
+{
+  "error": "failed to create device",
+  "detail": "..."
+}
+```
+
+## Curl Flow
+
+Login:
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com","password":"secret123"}' | jq -r .token)
+```
 
-curl http://localhost:8080/api/devices \
-  -H "Authorization: Bearer $TOKEN"
+Create device:
 
+```bash
 curl -X POST http://localhost:8080/api/devices \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"AP Lobby","ip":"192.168.10.20","type":"AP","vendor":"Ruijie","location":"Lobby","status":"ONLINE"}'
+  -d '{"name":"Localhost","ip":"127.0.0.1","type":"SERVICE","vendor":"Local","location":"Lab","status":"OFFLINE"}'
+```
+
+Create monitoring config:
+
+```bash
+curl -X POST http://localhost:8080/api/monitoring-configs \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"device_id":1,"ping_enabled":true,"tcp_enabled":false,"ping_interval":5,"tcp_interval":30,"monitored_port":0}'
+```
+
+Read latest status:
+
+```bash
+curl http://localhost:8080/api/device-status \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Logout:
+
+```bash
+curl -X POST http://localhost:8080/api/auth/logout \
+  -H "Authorization: Bearer $TOKEN"
 ```

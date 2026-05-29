@@ -1,0 +1,1232 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Dokumen Flow Sistem NetMonitor API</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm;
+    }
+
+    :root {
+      --ink: #17202a;
+      --muted: #5f6c7b;
+      --line: #d8dee8;
+      --panel: #f6f8fb;
+      --soft: #edf4f2;
+      --accent: #0f766e;
+      --accent-2: #2454a6;
+      --warn: #9a5b00;
+      --danger: #a33333;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.48;
+      background: #fff;
+    }
+
+    h1,
+    h2,
+    h3 {
+      color: #111827;
+      letter-spacing: 0;
+      line-height: 1.18;
+      page-break-after: avoid;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 26pt;
+    }
+
+    h2 {
+      margin: 28px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--line);
+      font-size: 16pt;
+    }
+
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 12.5pt;
+    }
+
+    p {
+      margin: 0 0 9px;
+    }
+
+    a {
+      color: var(--accent-2);
+      text-decoration: none;
+    }
+
+    code {
+      padding: 1px 4px;
+      border: 1px solid #d9e1ea;
+      border-radius: 4px;
+      background: #f7f9fc;
+      color: #111827;
+      font-family: "Courier New", monospace;
+      font-size: 9pt;
+    }
+
+    pre {
+      margin: 10px 0;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      white-space: pre-wrap;
+      font-family: "Courier New", monospace;
+      font-size: 8.8pt;
+      line-height: 1.38;
+    }
+
+    table {
+      width: 100%;
+      margin: 10px 0 14px;
+      border-collapse: collapse;
+      page-break-inside: avoid;
+      font-size: 9.2pt;
+    }
+
+    th,
+    td {
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef2f7;
+      text-align: left;
+      color: #1f2937;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0 12px 20px;
+      padding: 0;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .cover {
+      min-height: 180mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-bottom: 4px solid var(--accent);
+    }
+
+    .eyebrow {
+      margin-bottom: 12px;
+      color: var(--accent);
+      font-size: 10pt;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      max-width: 620px;
+      color: var(--muted);
+      font-size: 13pt;
+    }
+
+    .meta {
+      margin-top: 30px;
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 6px 14px;
+      color: var(--muted);
+      font-size: 10pt;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    .note {
+      margin: 12px 0;
+      padding: 10px 12px;
+      border-left: 4px solid var(--accent);
+      background: var(--soft);
+      page-break-inside: avoid;
+    }
+
+    .warning {
+      border-left-color: var(--warn);
+      background: #fff7e8;
+    }
+
+    .danger {
+      border-left-color: var(--danger);
+      background: #fff1f1;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .card {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      page-break-inside: avoid;
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    .flow {
+      margin: 12px 0 16px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      page-break-inside: avoid;
+    }
+
+    .flow-title {
+      margin-bottom: 8px;
+      color: #1f2937;
+      font-weight: 700;
+    }
+
+    .steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .step {
+      position: relative;
+      min-width: 112px;
+      flex: 1 1 112px;
+      padding: 8px 9px;
+      border: 1px solid #c9d5e3;
+      border-radius: 6px;
+      background: #fff;
+      color: #1f2937;
+      font-size: 9pt;
+      text-align: center;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--accent-2);
+      font-size: 8.5pt;
+      text-transform: uppercase;
+    }
+
+    .arrow {
+      align-self: center;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .toc {
+      column-count: 2;
+      column-gap: 24px;
+      margin-top: 12px;
+    }
+
+    .toc a {
+      display: block;
+      margin: 0 0 6px;
+      color: var(--ink);
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 9pt;
+    }
+
+    .nowrap {
+      white-space: nowrap;
+    }
+
+    .source-list {
+      font-size: 9pt;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <div class="eyebrow">Dokumen Flow Sistem</div>
+    <h1>NetMonitor API</h1>
+    <p class="subtitle">
+      Penjelasan alur kerja backend monitoring jaringan berbasis Fiber, GORM, dan MySQL:
+      mulai dari startup aplikasi, autentikasi, otorisasi role, CRUD resource, data monitoring,
+      alert, notifikasi, topologi, sampai data ML observability.
+    </p>
+    <div class="meta">
+      <div>Project</div><div><strong>be-project-smt6-polteksci</strong></div>
+      <div>Stack</div><div>Go, Fiber, GORM, MySQL, Docker</div>
+      <div>Base URL</div><div><code>http://localhost:8080</code></div>
+      <div>Tanggal dokumen</div><div>29 Mei 2026</div>
+      <div>Sumber utama</div><div><code>routes/api.go</code>, <code>app/models/models.go</code>, controller, middleware, config, database, Dockerfile</div>
+    </div>
+  </section>
+
+  <section class="page-break">
+    <h2 id="daftar-isi">Daftar Isi</h2>
+    <div class="toc">
+      <a href="#ringkasan">1. Ringkasan Sistem</a>
+      <a href="#arsitektur">2. Arsitektur dan Komponen</a>
+      <a href="#startup">3. Flow Startup Aplikasi</a>
+      <a href="#request">4. Flow Request API</a>
+      <a href="#auth">5. Flow Autentikasi</a>
+      <a href="#role">6. Flow Otorisasi Role</a>
+      <a href="#crud">7. Flow CRUD Resource</a>
+      <a href="#domain">8. Flow Domain Monitoring</a>
+      <a href="#database">9. Flow Database dan Relasi Data</a>
+      <a href="#endpoint">10. Daftar Endpoint</a>
+      <a href="#deployment">11. Flow Deployment</a>
+      <a href="#error">12. Error Handling dan Response</a>
+      <a href="#catatan">13. Catatan Implementasi</a>
+    </div>
+  </section>
+
+  <section class="page-break" id="ringkasan">
+    <h2>1. Ringkasan Sistem</h2>
+    <p>
+      NetMonitor API adalah backend untuk sistem monitoring jaringan. Sistem menyimpan data user,
+      session login, inventory device, status device, konfigurasi monitoring, alert, notifikasi,
+      activity log, relasi topologi jaringan, prediksi ML, dan anomali ML.
+    </p>
+    <p>
+      API menggunakan pola REST. Endpoint publik hanya root, health check, dan login. Endpoint lain
+      berada di bawah <code>/api</code> dan dilindungi middleware autentikasi berbasis session token.
+      Token dikirim melalui header <code>Authorization: Bearer &lt;token&gt;</code> atau query
+      <code>access_token</code>.
+    </p>
+
+    <div class="flow">
+      <div class="flow-title">Gambaran Besar Alur Sistem</div>
+      <div class="steps">
+        <div class="step"><strong>Client</strong>Frontend atau API consumer</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>Fiber</strong>Routing dan middleware</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>Auth</strong>Validasi session token</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>Controller</strong>Auth, user, CRUD resource</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>GORM</strong>Query dan preload relasi</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>MySQL</strong>Penyimpanan data</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Tujuan Fungsional</h3>
+        <ul>
+          <li>Mengelola user dan hak akses.</li>
+          <li>Mengelola device jaringan dan layanan.</li>
+          <li>Menyimpan status performa device.</li>
+          <li>Menyimpan konfigurasi monitoring ping dan TCP.</li>
+          <li>Mengelola alert dan notifikasi.</li>
+          <li>Menyimpan topology link antar-device.</li>
+          <li>Menyimpan output prediksi dan anomali ML.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Karakter Sistem Saat Ini</h3>
+        <ul>
+          <li>Backend API, bukan worker monitoring aktif.</li>
+          <li>CRUD generik untuk mayoritas resource.</li>
+          <li>Session token disimpan di tabel <code>sessions</code>.</li>
+          <li>Database dibuat otomatis jika belum ada.</li>
+          <li>Schema dibuat dan disesuaikan melalui GORM <code>AutoMigrate</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-break" id="arsitektur">
+    <h2>2. Arsitektur dan Komponen</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Komponen</th>
+          <th>Lokasi</th>
+          <th>Tanggung Jawab</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Entry point</td>
+          <td><code>main.go</code>, <code>cmd/server/main.go</code></td>
+          <td>Load konfigurasi, membuat logger, membuat context shutdown, menjalankan bootstrap aplikasi.</td>
+        </tr>
+        <tr>
+          <td>Config</td>
+          <td><code>config/app.go</code></td>
+          <td>Membaca <code>.env</code>, mengatur app name, port, CORS, TTL session, dan koneksi MySQL.</td>
+        </tr>
+        <tr>
+          <td>Logger</td>
+          <td><code>config/logger.go</code></td>
+          <td>Mencetak log startup, error, dan shutdown dengan format ringkas.</td>
+        </tr>
+        <tr>
+          <td>Database</td>
+          <td><code>database/database.go</code></td>
+          <td>Membuat database jika belum ada, membuka koneksi GORM, ping MySQL, dan AutoMigrate model.</td>
+        </tr>
+        <tr>
+          <td>Bootstrap</td>
+          <td><code>bootstrap/app.go</code></td>
+          <td>Membuat Fiber app, memasang recovery dan CORS, register route, listen server, graceful shutdown.</td>
+        </tr>
+        <tr>
+          <td>Routes</td>
+          <td><code>routes/api.go</code></td>
+          <td>Mendefinisikan endpoint publik, endpoint auth, protected group, dan resource CRUD.</td>
+        </tr>
+        <tr>
+          <td>Middleware</td>
+          <td><code>app/http/middleware/auth.go</code></td>
+          <td>Validasi session token dan pengecekan role.</td>
+        </tr>
+        <tr>
+          <td>Controllers</td>
+          <td><code>app/http/controllers</code></td>
+          <td>Menangani login, logout, profil user, CRUD user, dan CRUD resource generik.</td>
+        </tr>
+        <tr>
+          <td>Models</td>
+          <td><code>app/models/models.go</code></td>
+          <td>Definisi entity, enum, relasi, nama tabel khusus, dan daftar model untuk migrasi.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="flow">
+      <div class="flow-title">Layer Aplikasi</div>
+      <div class="steps">
+        <div class="step"><strong>HTTP</strong>Fiber route</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>Security</strong>Auth dan role middleware</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>Application</strong>Controller logic</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>Persistence</strong>GORM models</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>Storage</strong>MySQL tables</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-break" id="startup">
+    <h2>3. Flow Startup Aplikasi</h2>
+    <p>
+      Saat aplikasi dijalankan dengan <code>go run .</code>, binary Docker, atau <code>go run ./cmd/server</code>,
+      sistem menjalankan flow startup berikut.
+    </p>
+
+    <div class="flow">
+      <div class="flow-title">Startup Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Load .env dan environment</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Validasi konfigurasi</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Buat logger dan signal context</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>Ensure database MySQL</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>5</strong>Open GORM connection</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>6</strong>AutoMigrate tables</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>7</strong>Start Fiber server</div>
+      </div>
+    </div>
+
+    <ol>
+      <li><code>config.Load()</code> membaca <code>.env</code> memakai <code>godotenv</code>, lalu fallback ke environment/default value.</li>
+      <li>Jika <code>APP_ENV=production</code>, nilai <code>JWT_SECRET</code> tidak boleh tetap default. Catatan: flow auth saat ini memakai session token database, bukan JWT payload.</li>
+      <li><code>database.Connect()</code> membuka koneksi ke server MySQL tanpa memilih database, lalu menjalankan <code>CREATE DATABASE IF NOT EXISTS</code>.</li>
+      <li>GORM membuka koneksi ke database target, mengatur connection pool, melakukan ping, lalu menjalankan <code>AutoMigrate</code> untuk semua model.</li>
+      <li>Fiber app dibuat dengan timeout baca 10 detik, middleware recover, dan CORS.</li>
+      <li>Route didaftarkan melalui <code>routes.Register()</code>.</li>
+      <li>Server listen pada <code>:PORT</code>, default <code>:8080</code>.</li>
+      <li>Saat menerima <code>SIGINT</code> atau <code>SIGTERM</code>, aplikasi shutdown secara graceful dengan timeout 10 detik.</li>
+    </ol>
+  </section>
+
+  <section class="page-break" id="request">
+    <h2>4. Flow Request API</h2>
+    <p>
+      Semua request masuk ke Fiber. Endpoint publik dapat langsung merespons, sedangkan endpoint protected
+      melewati middleware autentikasi lebih dulu.
+    </p>
+
+    <h3>Endpoint Publik</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Path</th>
+          <th>Flow</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/</code></td>
+          <td>Mengembalikan nama aplikasi, deskripsi, status running, dan daftar endpoint utama.</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/healthz</code></td>
+          <td>Mengembalikan status <code>ok</code>, stack aplikasi, dan konfigurasi host/port/database MySQL.</td>
+        </tr>
+        <tr>
+          <td><code>POST</code></td>
+          <td><code>/api/auth/login</code>, <code>/api/login</code></td>
+          <td>Login user dan membuat session token.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Endpoint Protected</h3>
+    <div class="flow">
+      <div class="flow-title">Protected Request Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Client kirim request + token</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Middleware ambil Bearer token</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Cari session aktif di MySQL</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>Simpan user di <code>Locals</code></div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>5</strong>Role check jika perlu</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>6</strong>Controller proses data</div>
+      </div>
+    </div>
+
+    <p>
+      Query session memakai kondisi <code>token = ? AND expired_at &gt; now</code>. Jika token kosong,
+      salah, atau sudah expired, API membalas <code>401 Unauthorized</code>.
+    </p>
+  </section>
+
+  <section class="page-break" id="auth">
+    <h2>5. Flow Autentikasi</h2>
+
+    <h3>Login</h3>
+    <div class="flow">
+      <div class="flow-title">Login Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Client kirim email + password</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Normalize email</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Cari user by email</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>Validasi bcrypt atau bootstrap user pertama</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>5</strong>Generate random token</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>6</strong>Simpan session</div>
+      </div>
+    </div>
+
+    <p>
+      Endpoint login menerima JSON berisi <code>email</code> dan <code>password</code>. Email diubah menjadi
+      lowercase dan spasi dihapus. Jika email atau password kosong, API membalas <code>401</code>.
+    </p>
+    <p>
+      Jika user tidak ditemukan dan tabel <code>users</code> masih kosong, sistem otomatis membuat user pertama
+      dengan role <code>SUPER_ADMIN</code>. Password disimpan memakai hash bcrypt. Ini adalah flow bootstrap admin awal.
+      Jika tabel sudah berisi user, login email yang tidak ditemukan akan gagal.
+    </p>
+    <p>
+      Token dibuat dari 48 byte random, dikodekan dengan base64 URL-safe tanpa padding, lalu disimpan pada tabel
+      <code>sessions</code> bersama <code>user_id</code>, <code>expired_at</code>, dan <code>created_at</code>.
+      Masa berlaku token mengikuti <code>SESSION_TTL</code>, default <code>24h</code>.
+    </p>
+
+    <h3>Me</h3>
+    <p>
+      Endpoint <code>GET /api/auth/me</code> dan <code>GET /api/me</code> membaca user dari
+      <code>c.Locals("user")</code> yang sudah diisi middleware auth, lalu mengembalikan data profil tanpa password.
+    </p>
+
+    <h3>Logout</h3>
+    <div class="flow">
+      <div class="flow-title">Logout Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Client kirim token</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Controller ambil Bearer token</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Delete row session by token</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>Token tidak bisa dipakai lagi</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-break" id="role">
+    <h2>6. Flow Otorisasi Role</h2>
+    <p>
+      Sistem memiliki tiga role: <code>SUPER_ADMIN</code>, <code>ADMIN</code>, dan <code>USER</code>.
+      Role dicek setelah session token valid. Jika role user tidak termasuk daftar yang diizinkan, API membalas
+      <code>403 Forbidden</code>.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>SUPER_ADMIN</th>
+          <th>ADMIN</th>
+          <th>USER</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Login, logout, me</td>
+          <td>Ya</td>
+          <td>Ya</td>
+          <td>Ya</td>
+        </tr>
+        <tr>
+          <td>List dan detail resource protected</td>
+          <td>Ya</td>
+          <td>Ya</td>
+          <td>Ya</td>
+        </tr>
+        <tr>
+          <td>Create user</td>
+          <td>Ya</td>
+          <td>Ya</td>
+          <td>Tidak</td>
+        </tr>
+        <tr>
+          <td>Update user</td>
+          <td>Ya</td>
+          <td>Ya</td>
+          <td>Tidak</td>
+        </tr>
+        <tr>
+          <td>Delete user</td>
+          <td>Ya</td>
+          <td>Tidak</td>
+          <td>Tidak</td>
+        </tr>
+        <tr>
+          <td>Create, update, delete resource selain user</td>
+          <td>Ya</td>
+          <td>Ya</td>
+          <td>Tidak</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="page-break" id="crud">
+    <h2>7. Flow CRUD Resource</h2>
+    <p>
+      Hampir semua resource memakai <code>ResourceController[T]</code> generik. Controller ini menerima model GORM
+      dan nama resource, lalu menyediakan operasi list, create, detail, update, dan delete.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Path</th>
+          <th>Controller Flow</th>
+          <th>Akses</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/&lt;resource&gt;</code></td>
+          <td>Ambil semua row dengan <code>Preload(clause.Associations)</code>.</td>
+          <td>Semua user login</td>
+        </tr>
+        <tr>
+          <td><code>POST</code></td>
+          <td><code>/api/&lt;resource&gt;</code></td>
+          <td>Parse JSON body ke model, lalu <code>DB.Create</code>.</td>
+          <td><code>SUPER_ADMIN</code>, <code>ADMIN</code></td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/&lt;resource&gt;/:id</code></td>
+          <td>Parse ID, ambil satu row dengan preload relasi.</td>
+          <td>Semua user login</td>
+        </tr>
+        <tr>
+          <td><code>PUT</code>/<code>PATCH</code></td>
+          <td><code>/api/&lt;resource&gt;/:id</code></td>
+          <td>Ambil row, parse body ke map, hapus field <code>id</code> dan <code>created_at</code>, update row.</td>
+          <td><code>SUPER_ADMIN</code>, <code>ADMIN</code></td>
+        </tr>
+        <tr>
+          <td><code>DELETE</code></td>
+          <td><code>/api/&lt;resource&gt;/:id</code></td>
+          <td>Ambil row, lalu <code>DB.Delete</code>.</td>
+          <td><code>SUPER_ADMIN</code>, <code>ADMIN</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Flow CRUD User Khusus</h3>
+    <p>
+      User memakai controller sendiri karena perlu hashing password dan normalisasi field. Create user mewajibkan
+      <code>name</code>, <code>email</code>, dan <code>password</code>. Jika role tidak dikirim, default role adalah
+      <code>USER</code>. Update user hanya mengubah field yang dikirim dan password baru akan di-hash ulang.
+    </p>
+  </section>
+
+  <section class="page-break" id="domain">
+    <h2>8. Flow Domain Monitoring</h2>
+    <p>
+      Bagian ini menjelaskan alur bisnis berdasarkan model dan endpoint yang tersedia. Implementasi saat ini adalah
+      backend API penyimpanan data. Proses ping, TCP check, pengiriman notifikasi eksternal, atau inferensi ML dapat
+      dilakukan oleh frontend, worker, scheduler, atau service lain yang mengonsumsi API ini.
+    </p>
+
+    <h3>8.1 Inventory Device</h3>
+    <div class="flow">
+      <div class="flow-title">Device Inventory Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Admin tambah device</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Simpan name, IP, type, vendor, location</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Status awal ONLINE, OFFLINE, atau WARNING</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>Device menjadi referensi status, alert, topology, ML</div>
+      </div>
+    </div>
+    <p>
+      Device memiliki tipe <code>AP</code> atau <code>SERVICE</code>. Status device memakai enum
+      <code>ONLINE</code>, <code>OFFLINE</code>, dan <code>WARNING</code>.
+    </p>
+
+    <h3>8.2 Monitoring Config</h3>
+    <div class="flow">
+      <div class="flow-title">Monitoring Config Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Admin pilih device</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Aktifkan ping atau TCP</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Tentukan interval dan port</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>Config menjadi acuan proses monitor eksternal</div>
+      </div>
+    </div>
+    <p>
+      Konfigurasi menyimpan <code>ping_enabled</code>, <code>tcp_enabled</code>, <code>ping_interval</code>,
+      <code>tcp_interval</code>, dan <code>monitored_port</code>. Default ping aktif, TCP tidak aktif.
+    </p>
+
+    <h3>8.3 Device Status</h3>
+    <div class="flow">
+      <div class="flow-title">Device Status Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Monitor membaca config</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Monitor mengukur latency, packet loss, CPU, memory</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Data dikirim ke <code>/api/device-status</code></div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>Status tersimpan untuk dashboard dan analisis</div>
+      </div>
+    </div>
+    <p>
+      Tabel <code>device_status</code> menyimpan metrik numerik dan <code>last_seen</code>. Relasinya ke
+      <code>devices</code> memakai <code>device_id</code>.
+    </p>
+
+    <h3>8.4 Alert</h3>
+    <div class="flow">
+      <div class="flow-title">Alert Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Rule atau operator mendeteksi masalah</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Buat alert untuk device</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Set severity INFO, WARNING, CRITICAL</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>Status ACTIVE atau RESOLVED</div>
+      </div>
+    </div>
+    <p>
+      Alert menghubungkan masalah ke device tertentu, menyimpan pesan, severity, status, dan waktu pembuatan.
+    </p>
+
+    <h3>8.5 Notification</h3>
+    <div class="flow">
+      <div class="flow-title">Notification Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Alert dibuat</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Sistem atau admin membuat notification</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Notification diarahkan ke user</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>User membaca, field <code>is_read</code> diperbarui</div>
+      </div>
+    </div>
+    <p>
+      Notification menyimpan <code>user_id</code>, <code>alert_id</code>, judul, pesan, status baca, dan waktu dibuat.
+    </p>
+
+    <h3>8.6 Activity Log</h3>
+    <p>
+      Activity log menyimpan jejak aktivitas user, misalnya <code>CREATE_DEVICE</code>, <code>UPDATE_ALERT</code>,
+      atau aktivitas administratif lain. Model menyediakan field <code>user_id</code>, <code>action</code>,
+      <code>description</code>, dan <code>created_at</code>. Pencatatan otomatis belum dipasang sebagai middleware,
+      sehingga data log saat ini dibuat melalui endpoint CRUD.
+    </p>
+
+    <h3>8.7 Network Topology</h3>
+    <div class="flow">
+      <div class="flow-title">Topology Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Pilih source device</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Pilih target device</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Tentukan relation type</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>Simpan status link untuk visualisasi topology</div>
+      </div>
+    </div>
+    <p>
+      Topology menyimpan hubungan antar dua device menggunakan <code>source_device_id</code> dan
+      <code>target_device_id</code>. Contoh relation type adalah <code>uplink</code>, sedangkan status dapat berisi
+      nilai seperti <code>active</code> atau <code>inactive</code>.
+    </p>
+
+    <h3>8.8 ML Prediction dan ML Anomaly</h3>
+    <div class="flow">
+      <div class="flow-title">ML Observability Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Data status historis dianalisis</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Service ML membuat prediction atau anomaly</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Hasil disimpan via API</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>Dashboard membaca hasil untuk insight</div>
+      </div>
+    </div>
+    <p>
+      <code>ml_predictions</code> menyimpan tipe prediksi, nilai prediksi, dan confidence score.
+      <code>ml_anomalies</code> menyimpan anomaly score, ringkasan prediksi, dan severity <code>WARNING</code>
+      atau <code>CRITICAL</code>.
+    </p>
+  </section>
+
+  <section class="page-break" id="database">
+    <h2>9. Flow Database dan Relasi Data</h2>
+    <p>
+      Semua model didaftarkan di <code>ModelsForMigration()</code> sehingga GORM membuat atau memperbarui tabel
+      saat startup. Relasi memakai foreign key dengan constraint cascade update/delete pada model yang memiliki
+      relasi eksplisit.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Tabel</th>
+          <th>Field Utama</th>
+          <th>Relasi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>users</code></td>
+          <td><code>id</code>, <code>name</code>, <code>email</code>, <code>password</code>, <code>role</code>, <code>created_at</code></td>
+          <td>Menjadi parent untuk session, notification, activity log.</td>
+        </tr>
+        <tr>
+          <td><code>sessions</code></td>
+          <td><code>id</code>, <code>user_id</code>, <code>token</code>, <code>expired_at</code>, <code>created_at</code></td>
+          <td><code>user_id</code> ke <code>users.id</code>.</td>
+        </tr>
+        <tr>
+          <td><code>devices</code></td>
+          <td><code>id</code>, <code>name</code>, <code>ip</code>, <code>type</code>, <code>vendor</code>, <code>location</code>, <code>status</code></td>
+          <td>Parent untuk status, config, alert, topology, prediction, anomaly.</td>
+        </tr>
+        <tr>
+          <td><code>device_status</code></td>
+          <td><code>device_id</code>, <code>latency</code>, <code>packet_loss</code>, <code>cpu_usage</code>, <code>memory_usage</code>, <code>last_seen</code></td>
+          <td><code>device_id</code> ke <code>devices.id</code>.</td>
+        </tr>
+        <tr>
+          <td><code>monitoring_configs</code></td>
+          <td><code>device_id</code>, <code>ping_enabled</code>, <code>tcp_enabled</code>, <code>ping_interval</code>, <code>tcp_interval</code>, <code>monitored_port</code></td>
+          <td><code>device_id</code> ke <code>devices.id</code>.</td>
+        </tr>
+        <tr>
+          <td><code>alerts</code></td>
+          <td><code>device_id</code>, <code>severity</code>, <code>message</code>, <code>status</code>, <code>created_at</code></td>
+          <td><code>device_id</code> ke <code>devices.id</code>.</td>
+        </tr>
+        <tr>
+          <td><code>notifications</code></td>
+          <td><code>user_id</code>, <code>alert_id</code>, <code>title</code>, <code>message</code>, <code>is_read</code></td>
+          <td><code>user_id</code> ke <code>users.id</code>, <code>alert_id</code> ke <code>alerts.id</code>.</td>
+        </tr>
+        <tr>
+          <td><code>activity_logs</code></td>
+          <td><code>user_id</code>, <code>action</code>, <code>description</code>, <code>created_at</code></td>
+          <td><code>user_id</code> ke <code>users.id</code>.</td>
+        </tr>
+        <tr>
+          <td><code>network_topology</code></td>
+          <td><code>source_device_id</code>, <code>target_device_id</code>, <code>relation_type</code>, <code>status</code></td>
+          <td>Dua relasi ke <code>devices.id</code>.</td>
+        </tr>
+        <tr>
+          <td><code>ml_predictions</code></td>
+          <td><code>device_id</code>, <code>prediction_type</code>, <code>prediction_value</code>, <code>confidence_score</code></td>
+          <td><code>device_id</code> ke <code>devices.id</code>.</td>
+        </tr>
+        <tr>
+          <td><code>ml_anomalies</code></td>
+          <td><code>device_id</code>, <code>anomaly_score</code>, <code>prediction</code>, <code>severity</code></td>
+          <td><code>device_id</code> ke <code>devices.id</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      Saat controller list/detail menjalankan preload association, response dapat membawa object relasi seperti
+      <code>device</code>, <code>user</code>, <code>alert</code>, <code>source_device</code>, atau
+      <code>target_device</code> jika relasi tersedia.
+    </div>
+  </section>
+
+  <section class="page-break" id="endpoint">
+    <h2>10. Daftar Endpoint</h2>
+
+    <h3>Root dan Health</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Path</th>
+          <th>Akses</th>
+          <th>Fungsi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/</code></td>
+          <td>Publik</td>
+          <td>Info API dan daftar endpoint.</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/healthz</code></td>
+          <td>Publik</td>
+          <td>Health check aplikasi.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Auth</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Path</th>
+          <th>Akses</th>
+          <th>Fungsi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>POST</code></td>
+          <td><code>/api/auth/login</code>, <code>/api/login</code></td>
+          <td>Publik</td>
+          <td>Login dan membuat session token.</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/auth/me</code>, <code>/api/me</code></td>
+          <td>User login</td>
+          <td>Melihat profil user aktif.</td>
+        </tr>
+        <tr>
+          <td><code>POST</code></td>
+          <td><code>/api/auth/logout</code></td>
+          <td>User login</td>
+          <td>Hapus session token aktif.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Resource</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Resource</th>
+          <th>Base Path</th>
+          <th>Operasi</th>
+          <th>Catatan Akses</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Users</td>
+          <td><code>/api/users</code></td>
+          <td>List, create, detail, update, delete</td>
+          <td>Delete hanya <code>SUPER_ADMIN</code>.</td>
+        </tr>
+        <tr>
+          <td>Sessions</td>
+          <td><code>/api/sessions</code></td>
+          <td>List, create, detail, update, delete</td>
+          <td>Mutasi oleh <code>SUPER_ADMIN</code>/<code>ADMIN</code>.</td>
+        </tr>
+        <tr>
+          <td>Devices</td>
+          <td><code>/api/devices</code></td>
+          <td>List, create, detail, update, delete</td>
+          <td>Mutasi oleh <code>SUPER_ADMIN</code>/<code>ADMIN</code>.</td>
+        </tr>
+        <tr>
+          <td>Device Status</td>
+          <td><code>/api/device-status</code></td>
+          <td>List, create, detail, update, delete</td>
+          <td>Mutasi oleh <code>SUPER_ADMIN</code>/<code>ADMIN</code>.</td>
+        </tr>
+        <tr>
+          <td>Monitoring Configs</td>
+          <td><code>/api/monitoring-configs</code></td>
+          <td>List, create, detail, update, delete</td>
+          <td>Mutasi oleh <code>SUPER_ADMIN</code>/<code>ADMIN</code>.</td>
+        </tr>
+        <tr>
+          <td>Alerts</td>
+          <td><code>/api/alerts</code></td>
+          <td>List, create, detail, update, delete</td>
+          <td>Mutasi oleh <code>SUPER_ADMIN</code>/<code>ADMIN</code>.</td>
+        </tr>
+        <tr>
+          <td>Notifications</td>
+          <td><code>/api/notifications</code></td>
+          <td>List, create, detail, update, delete</td>
+          <td>Mutasi oleh <code>SUPER_ADMIN</code>/<code>ADMIN</code>.</td>
+        </tr>
+        <tr>
+          <td>Activity Logs</td>
+          <td><code>/api/activity-logs</code></td>
+          <td>List, create, detail, update, delete</td>
+          <td>Mutasi oleh <code>SUPER_ADMIN</code>/<code>ADMIN</code>.</td>
+        </tr>
+        <tr>
+          <td>Network Topology</td>
+          <td><code>/api/network-topology</code></td>
+          <td>List, create, detail, update, delete</td>
+          <td>Mutasi oleh <code>SUPER_ADMIN</code>/<code>ADMIN</code>.</td>
+        </tr>
+        <tr>
+          <td>ML Predictions</td>
+          <td><code>/api/ml-predictions</code></td>
+          <td>List, create, detail, update, delete</td>
+          <td>Mutasi oleh <code>SUPER_ADMIN</code>/<code>ADMIN</code>.</td>
+        </tr>
+        <tr>
+          <td>ML Anomalies</td>
+          <td><code>/api/ml-anomalies</code></td>
+          <td>List, create, detail, update, delete</td>
+          <td>Mutasi oleh <code>SUPER_ADMIN</code>/<code>ADMIN</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="page-break" id="deployment">
+    <h2>11. Flow Deployment</h2>
+
+    <h3>Local Development</h3>
+    <pre>cp .env.example .env
+go run .</pre>
+    <p>
+      Secara default aplikasi berjalan di <code>http://localhost:8080</code>. Health check dapat dicek melalui
+      <code>GET /healthz</code>.
+    </p>
+
+    <h3>Docker Compose</h3>
+    <div class="flow">
+      <div class="flow-title">Docker Compose Flow</div>
+      <div class="steps">
+        <div class="step"><strong>1</strong>Start service MySQL 8.4</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>2</strong>Healthcheck MySQL</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>3</strong>Build image API</div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>4</strong>API connect ke host <code>mysql</code></div>
+        <div class="arrow">-&gt;</div>
+        <div class="step"><strong>5</strong>Expose port 8080</div>
+      </div>
+    </div>
+    <p>
+      Dockerfile memakai multi-stage build: stage pertama memakai image Go Alpine untuk build binary
+      <code>/out/netmonitor</code>, stage runtime memakai Alpine, membuat user non-root <code>appuser</code>,
+      lalu menjalankan <code>/app/netmonitor</code>.
+    </p>
+
+    <div class="warning note">
+      <strong>Catatan:</strong> <code>docker-compose.yml</code> mereferensikan file
+      <code>./migrations/001_mysql_observability.sql</code>, tetapi folder/file tersebut tidak terlihat di working
+      tree saat dokumen ini dibuat. Karena aplikasi sudah memakai GORM <code>AutoMigrate</code>, schema tetap dapat
+      dibuat oleh backend, tetapi bind mount Docker Compose perlu dicek jika menjalankan compose.
+    </div>
+  </section>
+
+  <section class="page-break" id="error">
+    <h2>12. Error Handling dan Response</h2>
+    <p>
+      Controller memakai format response JSON yang konsisten. Jika operasi berhasil, response biasanya memakai
+      field <code>data</code> atau <code>message</code>. Jika gagal, response memakai field <code>error</code> dan
+      kadang <code>detail</code>.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Kondisi</th>
+          <th>Status</th>
+          <th>Response</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Body JSON tidak valid</td>
+          <td><code>400</code></td>
+          <td><code>{"error":"invalid request body","detail":"..."}</code></td>
+        </tr>
+        <tr>
+          <td>ID URL tidak valid</td>
+          <td><code>400</code></td>
+          <td><code>{"error":"invalid id","detail":"..."}</code></td>
+        </tr>
+        <tr>
+          <td>Login gagal</td>
+          <td><code>401</code></td>
+          <td><code>{"error":"email or password is invalid"}</code></td>
+        </tr>
+        <tr>
+          <td>Token kosong</td>
+          <td><code>401</code></td>
+          <td><code>{"error":"authentication token is required"}</code></td>
+        </tr>
+        <tr>
+          <td>Token salah atau expired</td>
+          <td><code>401</code></td>
+          <td><code>{"error":"authentication token is invalid or expired"}</code></td>
+        </tr>
+        <tr>
+          <td>Role tidak cukup</td>
+          <td><code>403</code></td>
+          <td><code>{"error":"insufficient permission"}</code></td>
+        </tr>
+        <tr>
+          <td>Data tidak ditemukan</td>
+          <td><code>404</code></td>
+          <td><code>{"error":"resource not found"}</code></td>
+        </tr>
+        <tr>
+          <td>Error database/server</td>
+          <td><code>500</code></td>
+          <td><code>{"error":"failed to ...","detail":"..."}</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Contoh Flow API Singkat</h3>
+    <pre>POST /api/auth/login
+Content-Type: application/json
+
+{"email":"admin@example.com","password":"secret123"}
+
+Response:
+{
+  "message": "login berhasil",
+  "token": "SESSION_TOKEN",
+  "session": {...},
+  "user": {...}
+}</pre>
+
+    <pre>GET /api/devices
+Authorization: Bearer SESSION_TOKEN
+
+Response:
+{
+  "data": []
+}</pre>
+  </section>
+
+  <section class="page-break" id="catatan">
+    <h2>13. Catatan Implementasi</h2>
+    <ul>
+      <li>Auth saat ini memakai session token random yang disimpan di database, bukan JWT signed token.</li>
+      <li><code>JWT_SECRET</code> tetap ada di konfigurasi dan divalidasi untuk production, tetapi belum dipakai dalam flow auth.</li>
+      <li>CRUD generik tidak memvalidasi aturan bisnis khusus per resource selain validasi constraint database dan parsing body.</li>
+      <li>Monitoring aktif, scheduler ping/TCP, notifikasi eksternal, dan mesin ML belum terlihat sebagai service di repo ini.</li>
+      <li>Activity log belum otomatis dibuat dari setiap aksi; endpoint CRUD tersedia untuk menyimpan log.</li>
+      <li>File <code>README.md</code> dan <code>NetMonitor_API_Spec.md</code> tercatat terhapus di working tree saat dokumen ini dibuat; isi versi Git terakhir dipakai sebagai referensi tambahan.</li>
+    </ul>
+
+    <h3>Referensi File yang Dibaca</h3>
+    <p class="source-list">
+      <code>routes/api.go</code>,
+      <code>app/models/models.go</code>,
+      <code>app/http/controllers/auth_controller.go</code>,
+      <code>app/http/controllers/user_controller.go</code>,
+      <code>app/http/controllers/crud_controller.go</code>,
+      <code>app/http/middleware/auth.go</code>,
+      <code>bootstrap/app.go</code>,
+      <code>config/app.go</code>,
+      <code>config/logger.go</code>,
+      <code>database/database.go</code>,
+      <code>Dockerfile</code>,
+      <code>docker-compose.yml</code>,
+      <code>.env.example</code>,
+      <code>docs/observability_architecture.md</code>,
+      dan versi Git terakhir dari <code>README.md</code> serta <code>NetMonitor_API_Spec.md</code>.
+    </p>
+  </section>
+</body>
+</html>
