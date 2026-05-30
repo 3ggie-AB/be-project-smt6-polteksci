@@ -1,8 +1,11 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
+	"strings"
+
 	"network-monitor/internal/config"
 
 	"gorm.io/driver/mysql"
@@ -13,6 +16,8 @@ import (
 var DB *gorm.DB
 
 func ConnectMySQL(cfg *config.Config) {
+	ensureMySQLDatabase(cfg)
+
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.MySQLUser,
 		cfg.MySQLPassword,
@@ -42,6 +47,39 @@ func ConnectMySQL(cfg *config.Config) {
 
 	DB = db
 	log.Println("✅ Terhubung ke MySQL")
+}
+
+func ensureMySQLDatabase(cfg *config.Config) {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local",
+		cfg.MySQLUser,
+		cfg.MySQLPassword,
+		cfg.MySQLHost,
+		cfg.MySQLPort,
+	)
+
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		log.Fatalf("❌ Gagal membuka koneksi MySQL untuk membuat database: %v", err)
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		log.Fatalf("❌ MySQL tidak merespon: %v", err)
+	}
+
+	query := fmt.Sprintf(
+		"CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
+		quoteMySQLIdentifier(cfg.MySQLDatabase),
+	)
+	if _, err := db.Exec(query); err != nil {
+		log.Fatalf("❌ Gagal membuat database MySQL: %v", err)
+	}
+
+	log.Printf("✅ Database MySQL siap: %s", cfg.MySQLDatabase)
+}
+
+func quoteMySQLIdentifier(identifier string) string {
+	return "`" + strings.ReplaceAll(identifier, "`", "``") + "`"
 }
 
 func GetDB() *gorm.DB {
